@@ -15,7 +15,9 @@ from keras.layers.core import Dense, Dropout, Activation
 from keras.optimizers import Adam
 
 def model_gadaNet():
-  # do nothing
-  return 0
+  var1 = 'test'
+  return var1
 
 test = model_gadaNet()
+print(test)
+
