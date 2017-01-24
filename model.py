@@ -193,7 +193,7 @@ def train_model():
 def save_trained_model(path_model, path_weights):
     print('Save model at:')
     print('Model: ', path_model)
-    print('Weights: ', fileWeights)
+    print('Weights: ', path_weights)
     
     if Path(path_model).is_file():
         os.remove(path_model)
