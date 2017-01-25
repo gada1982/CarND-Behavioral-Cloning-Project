@@ -24,7 +24,7 @@ def load_data_info(path_of_data):
 		sys.exit(-1)
 
 	# Open *.csv with logged driving data
-	with open(path_of_data + '/driving_log.csv', 'r') as logfile:
+	with open(path_of_data + '/driving_log_small.csv', 'r') as logfile:
 		file_read = csv.reader(logfile, delimiter=',')
 		drive_data = []
 		for i in file_read:
@@ -249,21 +249,18 @@ def train_model(model):
 
 
 	print(model_data)
-	X_validation = get_single_validation_data(drive_data_relevant, 71)
+	X_validation = get_single_validation_data(drive_data_relevant, 0)
 	val_preds = model.predict(X_validation)
 	print('eins:',min(val_preds), max(val_preds))
-	X_validation = get_single_validation_data(drive_data_relevant, 300)
+	X_validation = get_single_validation_data(drive_data_relevant, 1)
 	val_preds = model.predict(X_validation)
 	print('zwei:',min(val_preds), max(val_preds))
-	X_validation = get_single_validation_data(drive_data_relevant, 764)
+	X_validation = get_single_validation_data(drive_data_relevant, 2)
 	val_preds = model.predict(X_validation)
 	print('drei:',min(val_preds), max(val_preds))
-	X_validation = get_single_validation_data(drive_data_relevant, 5534)
+	X_validation = get_single_validation_data(drive_data_relevant, 3)
 	val_preds = model.predict(X_validation)
 	print('vier:',min(val_preds), max(val_preds))
-	X_validation = get_single_validation_data(drive_data_relevant, 5866)
-	val_preds = model.predict(X_validation)
-	print('fünf:',min(val_preds), max(val_preds))
 
 	file_name_model = 'model.json'
 	file_name_weights = 'model.h5'
@@ -298,7 +295,7 @@ drive_data_relevant = load_data_info(path_of_data)
 # Only for testing 
 debug_test = 1
 if debug_test == 1:
-	image_index = 3274
+	image_index = 2
 	print_image_data(drive_data_relevant, image_index)
 	print()
 
@@ -314,7 +311,8 @@ if debug_test == 1:
 	test_valid_generator()
 	print()
 
-model = model_test()
+#model = model_test()
+model = model_nvidia_gada()
 print(model.summary())
 print()
 
