@@ -11,7 +11,7 @@ from pathlib import Path
 
 # Imports for keras
 from keras.models import Sequential, Model
-from keras.layers import Convolution2D, Flatten
+from keras.layers import Convolution2D, Flatten, ELU, MaxPooling2D
 from keras.layers.core import Dense, Dropout, Activation
 from keras.optimizers import Adam
 
@@ -67,6 +67,60 @@ def get_image_shape(data, number):
 	image_shape = image.shape
 	return image_shape
 
+def model_test():
+	new_size_row, new_size_col, ch = get_image_shape(drive_data_relevant, 0)
+	input_shape = (new_size_row, new_size_col, 3)
+	filter_size = 3
+	pool_size = (2,2)
+	model = Sequential()
+	model.add(Convolution2D(3,1,1,
+                        border_mode='valid',
+                        name='conv0', init='he_normal', input_shape=input_shape))
+	model.add(Convolution2D(32,filter_size,filter_size,
+                        border_mode='valid',
+                        name='conv1', init='he_normal'))
+	model.add(ELU())
+	model.add(Convolution2D(32,filter_size,filter_size,
+                        border_mode='valid',
+                        name='conv2', init='he_normal'))
+	model.add(ELU())
+	model.add(MaxPooling2D(pool_size=pool_size))
+	model.add(Dropout(0.5))
+	model.add(Convolution2D(64,filter_size,filter_size,
+                        border_mode='valid',
+                        name='conv3', init='he_normal'))
+	model.add(ELU())
+
+	model.add(Convolution2D(64,filter_size,filter_size,
+                        border_mode='valid',
+                        name='conv4', init='he_normal'))
+	model.add(ELU())
+	model.add(MaxPooling2D(pool_size=pool_size))
+	model.add(Dropout(0.5))
+	model.add(Convolution2D(128,filter_size,filter_size,
+                        border_mode='valid',
+                        name='conv5', init='he_normal'))
+	model.add(ELU())
+	model.add(Convolution2D(128,filter_size,filter_size,
+                        border_mode='valid',
+                        name='conv6', init='he_normal'))
+	model.add(ELU())
+	model.add(MaxPooling2D(pool_size=pool_size))
+	model.add(Dropout(0.5))
+	model.add(Flatten())
+	model.add(Dense(512,name='hidden1', init='he_normal'))
+	model.add(ELU())
+	model.add(Dropout(0.5))
+	model.add(Dense(64,name='hidden2', init='he_normal'))
+	model.add(ELU())
+	model.add(Dropout(0.5))
+	model.add(Dense(16,name='hidden3',init='he_normal'))
+	model.add(ELU())
+	model.add(Dropout(0.5))
+	model.add(Dense(1, name='output', init='he_normal'))
+	return model
+
+
 def model_nvidia_gada():
     # TODO: Check if model is okay -> Paper!!!
     model = Sequential()
@@ -121,6 +175,22 @@ def generate_train_data_int(data, printinfo):
 	y = np.array([[y]])
 	return x, y
 
+def get_single_validation_data(data,number):
+	# TODO: Preprocessing
+	i = number
+	image_name = data[i][0]
+	image_path = path_of_data + '/' + image_name
+	print()
+	print('Single image to test:')
+	print(image_path)
+	x = cv2.imread(image_path)
+	x = x.reshape(1, x.shape[0], x.shape[1], x.shape[2])
+	y = data[i][1]
+	print('Steering angle y: ', y)
+	print()
+	y = np.array([[y]])
+	return x	
+
 def generate_valid_data_int(data, printinfo):
 	# TODO: Preprocessing
 	i = np.random.randint(len(data))
@@ -160,11 +230,10 @@ def test_valid_generator():
 	print(y)
 
 
-def train_model():
+def train_model(model):
 	# trains the model
 	learning_rate = 0.0001 # Perhaps it has to be changed?
 	
-	model = model_nvidia_gada()
 	adam_optimizer = Adam(lr = learning_rate)
 	
 	model.compile(optimizer = adam_optimizer, loss = "mse")
@@ -175,8 +244,26 @@ def train_model():
 	data_generator_train = generate_train_data(drive_data_relevant)
 
 	model_data = model.fit_generator(data_generator_train,
-            samples_per_epoch = 50, nb_epoch = 1, validation_data = data_generator_valid,
-                        nb_val_samples = valid_size, verbose = 2)
+            samples_per_epoch = 20000, nb_epoch = 1, validation_data = data_generator_valid,
+                        nb_val_samples = valid_size, verbose = 1)
+
+
+	print(model_data)
+	X_validation = get_single_validation_data(drive_data_relevant, 71)
+	val_preds = model.predict(X_validation)
+	print('eins:',min(val_preds), max(val_preds))
+	X_validation = get_single_validation_data(drive_data_relevant, 300)
+	val_preds = model.predict(X_validation)
+	print('zwei:',min(val_preds), max(val_preds))
+	X_validation = get_single_validation_data(drive_data_relevant, 764)
+	val_preds = model.predict(X_validation)
+	print('drei:',min(val_preds), max(val_preds))
+	X_validation = get_single_validation_data(drive_data_relevant, 5534)
+	val_preds = model.predict(X_validation)
+	print('vier:',min(val_preds), max(val_preds))
+	X_validation = get_single_validation_data(drive_data_relevant, 5866)
+	val_preds = model.predict(X_validation)
+	print('fünf:',min(val_preds), max(val_preds))
 
 	file_name_model = 'model.json'
 	file_name_weights = 'model.h5'
@@ -227,12 +314,11 @@ if debug_test == 1:
 	test_valid_generator()
 	print()
 
-model = model_nvidia_gada()
+model = model_test()
 print(model.summary())
 print()
 
-train_model()
+train_model(model)
 
 print()
 print('done!!!')
-
