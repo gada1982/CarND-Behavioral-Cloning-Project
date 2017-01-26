@@ -10,13 +10,13 @@ import cv2
 from pathlib import Path
 
 # Imports for keras
-from keras.models import Sequential, Model
-from keras.layers import Convolution2D, Flatten, ELU, MaxPooling2D
-from keras.layers.core import Dense, Dropout, Activation
-from keras.optimizers import Adam
+#from keras.models import Sequential, Model
+#from keras.layers import Convolution2D, Flatten, ELU, MaxPooling2D
+#from keras.layers.core import Dense, Dropout, Activation
+#from keras.optimizers import Adam
 
 # Import json to save the model
-import json
+#import json
 
 def load_data_info(path_of_data):
 	if not os.path.exists(path_of_data):
@@ -31,13 +31,233 @@ def load_data_info(path_of_data):
 			drive_data.append(i)
 
 	# The log file data is available in the following type: 
-	# center_image, left_image,|right_image, steering-data, throttle-data, brake-data, speed-data
-	# At the moment only center_image and steering-data are used 
-	# TODO: Later on the left and right image will be included -> Expand info
+	# center_image, left_image, right_image, steering-data, throttle-data, brake-data, speed-data
+	# Onyl center_image, left_image, right_image and steering-data are used 
 	drive_data = np.array( drive_data )
-	drive_data_relevant = np.hstack( (drive_data[1:, 0].reshape((-1,1)), drive_data[1:,3].reshape((-1,1))))
+	drive_data_relevant = np.hstack(( drive_data[1:, 0].reshape((-1,1)), drive_data[1:, 1].reshape((-1,1)), drive_data[1:, 2].reshape((-1,1)), drive_data[1:,3].reshape((-1,1))))
 
 	return drive_data_relevant
+
+def modify_data_info(drive_data):
+	print()
+	print('modify_data_info')
+	print(len(drive_data))
+	
+	count_left = 0
+	count_center = 0
+	count_right = 0
+
+	# Count how many images are with steering left, steering right and nearly not steering
+	# Steering left: steering data < -0.1
+	# Steering right: steering data > 0.1
+	# Nearly no steering: -0.1 <= steering data <= 0.1
+	for i in range(0, len(drive_data)):
+		if float(drive_data[i][3]) < - 0.1:
+			# Steering left: steering data < -0.1
+			count_left += 1
+		elif float(drive_data[i][3]) > 0.1:
+			# Steering right: steering data > 0.1
+			count_right += 1
+		else: 
+			# Nearly no steering: -0.1 <= steering data <= 0.1
+			count_center += 1
+
+	w = 3
+	# leep space for flipped images
+	h_left = (count_left + count_right ) * 3
+	# No flipping of center images
+	h_center = count_center * 3
+	# leep space for flipped images
+	h_right =  (count_left + count_right ) * 3
+
+	drive_data_left = [[0 for x in range(w)] for y in range(h_left)]
+	drive_data_center = [[0 for x in range(w)] for y in range(h_center)]
+	drive_data_right = [[0 for x in range(w)] for y in range(h_right)]
+	
+	steering_offset = 0.2
+	i_left = 0
+	i_center = 0
+	i_right = 0
+	for i in range(0, len(drive_data)):
+		if float(drive_data[i][3]) < - 0.1:
+			# Steering left: steering data < -0.1
+			# Include image of center camera
+			if i_left < len(drive_data_left):
+				# Set image name
+				drive_data_left[i_left][0] = drive_data[i][0]
+				# Set steering angle
+				drive_data_left[i_left][1] = drive_data[i][3]
+				# Not flipped image
+				drive_data_left[i_left][2] = 0
+				i_left += 1
+			else:
+				print('error')
+			# Include image of left camera
+			if i_left < len(drive_data_left):
+				# Set image name
+				drive_data_left[i_left][0] = drive_data[i][1]
+				# Set steering angle
+				drive_data_left[i_left][1] = str(float(drive_data[i][3]) + steering_offset)
+				# Not flipped image
+				drive_data_left[i_left][2] = 0
+				i_left += 1
+			else:
+				print('error')
+			# Include image of right camera
+			if i_left < len(drive_data_left):
+				# Set image name
+				drive_data_left[i_left][0] = drive_data[i][2]
+				# Set steering angle
+				drive_data_left[i_left][1] = str(float(drive_data[i][3]) - steering_offset)
+				# Not flipped image
+				drive_data_left[i_left][2] = 0
+				i_left += 1
+			else:
+				print('error')
+
+			# Include flipped images (center, left, right)
+			# Include image of center camera
+			if i_right < len(drive_data_right):
+				# Set image name of the center image
+				drive_data_right[i_right][0] = drive_data[i][0]
+				# Set steering angle (flipped)
+				drive_data_right[i_right][1] = str(float(drive_data[i][3]) * - 1 )
+				# Not flipped image
+				drive_data_right[i_right][2] = 1
+				i_right += 1
+			else:
+				print('error')
+			# Include image of left camera
+			if i_right < len(drive_data_right):
+				# Set image name of the center image
+				drive_data_right[i_right][0] = drive_data[i][1]
+				# Set steering angle (flipped)
+				drive_data_right[i_right][1] = str((float(drive_data[i][3]) * - 1 ) - steering_offset)
+				# Not flipped image
+				drive_data_right[i_right][2] = 1
+				i_right += 1
+			else:
+				print('error')
+			# Include image of right camera
+			if i_right < len(drive_data_right):
+				# Set image name of the center image
+				drive_data_right[i_right][0] = drive_data[i][2]
+				# Set steering angle (flipped)
+				drive_data_right[i_right][1] = str((float(drive_data[i][3]) * - 1 ) + steering_offset)
+				# Not flipped image
+				drive_data_right[i_right][2] = 1
+				i_right += 1
+			else:
+				print('error')
+
+		elif float(drive_data[i][3]) > 0.1:
+			# Steering right: steering data > 0.1
+			# Include image of center camera
+			if i_right < len(drive_data_right):
+				# Set image name
+				drive_data_right[i_right][0] = drive_data[i][0]
+				# Set steering angle
+				drive_data_right[i_right][1] = drive_data[i][3]
+				# Not flipped image
+				drive_data_right[i_right][2] = 0
+				i_right += 1
+			else:
+				print('error')
+			# Include image of left camera
+			if i_right < len(drive_data_right):
+				# Set image name
+				drive_data_right[i_right][0] = drive_data[i][1]
+				# Set steering angle
+				drive_data_right[i_right][1] = str(float(drive_data[i][3]) + steering_offset)
+				# Not flipped image
+				drive_data_right[i_right][2] = 0
+				i_right += 1
+			else:
+				print('error')
+			# Include image of right camera
+			if i_right < len(drive_data_right):
+				# Set image name
+				drive_data_right[i_right][0] = drive_data[i][2]
+				# Set steering angle
+				drive_data_right[i_right][1] = str(float(drive_data[i][3]) - steering_offset)
+				# Not flipped image
+				drive_data_right[i_right][2] = 0
+				i_right += 1
+			else:
+				print('error')
+
+			# Include flipped images (center, left, right)
+			# Include image of center camera
+			if i_left < len(drive_data_left):
+				# Set image name of the center image
+				drive_data_left[i_left][0] = drive_data[i][0]
+				# Set steering angle (flipped)
+				drive_data_left[i_left][1] = str(float(drive_data[i][3]) * - 1 )
+				# Not flipped image
+				drive_data_left[i_left][2] = 1
+				i_left += 1
+			else:
+				print('error')
+			# Include image of left camera
+			if i_left < len(drive_data_left):
+				# Set image name of the center image
+				drive_data_left[i_left][0] = drive_data[i][1]
+				# Set steering angle (flipped)
+				drive_data_left[i_left][1] = str((float(drive_data[i][3]) * - 1 ) - steering_offset)
+				# Not flipped image
+				drive_data_left[i_left][2] = 1
+				i_left += 1
+			else:
+				print('error')
+			# Include image of right camera
+			if i_left < len(drive_data_left):
+				# Set image name of the center image
+				drive_data_left[i_left][0] = drive_data[i][2]
+				# Set steering angle (flipped)
+				drive_data_left[i_left][1] = str((float(drive_data[i][3]) * - 1 ) + steering_offset)
+				# Not flipped image
+				drive_data_left[i_left][2] = 1
+				i_left += 1
+			else:
+				print('error')
+		
+		else: 
+			# Nearly no steering: -0.1 <= steering data <= 0.1
+			# Include image of center camera
+			if i_center < len(drive_data_center):
+				# Set image name
+				drive_data_center[i_center][0] = drive_data[i][0]
+				# Set steering angle
+				drive_data_center[i_center][1] = drive_data[i][3]
+				# Not flipped image
+				drive_data_center[i_center][2] = 0
+				i_center += 1
+			else:
+				print('error')
+			# Include image of left camera
+			if i_center < len(drive_data_center):
+				# Set image name
+				drive_data_center[i_center][0] = drive_data[i][1]
+				# Set steering angle
+				drive_data_center[i_center][1] = str(float(drive_data[i][3]) + steering_offset)
+				# Not flipped image
+				drive_data_center[i_center][2] = 0
+				i_center += 1
+			else:
+				print('error')
+			# Include image of right camera
+			if i_center < len(drive_data_center):
+				# Set image name
+				drive_data_center[i_center][0] = drive_data[i][2]
+				# Set steering angle
+				drive_data_center[i_center][1] = str(float(drive_data[i][3]) - steering_offset)
+				# Not flipped image
+				drive_data_center[i_center][2] = 0
+				i_center += 1
+			else:
+				print('error')
+			
+	return drive_data_left, drive_data_center, drive_data_right
 
 def get_normalized_image(image):
     # Change color-space from BGR to RGB
@@ -51,6 +271,8 @@ def print_image_data(data, number):
 	image_name = data[number][0]
 	image_path = path_of_data + '/' + image_name
 	print()
+	print('Datastring:')
+	print(data[number])
 	print('Image:')
 	print(image_path)
 	image = cv2.imread(image_path)
@@ -288,35 +510,55 @@ def save_trained_model(path_model, path_weights):
         os.remove(path_weights)
     model.save_weights(path_weights)
 
+# Configuration area
+debug_test = 1
+print_test_generator = 0
+do_training = 0
+
+
 path_of_data = './data_udacity'
 
 drive_data_relevant = load_data_info(path_of_data)
+drive_data_left, drive_data_center, drive_data_right = modify_data_info(drive_data_relevant)
+if debug_test == 1:
+	print('Left_Len: ', len(drive_data_left))
+	print('Center_Len: ', len(drive_data_center))
+	print('Right_Len: ', len(drive_data_right))
+	print()
+	print()
+	print('Left: ')
+	print(drive_data_left)
+	print('Center: ')
+	print(drive_data_center)
+	print('Right: ')
+	print(drive_data_right)
 
 # Only for testing 
-debug_test = 1
 if debug_test == 1:
 	image_index = 2
 	print_image_data(drive_data_relevant, image_index)
 	print()
 
-if debug_test == 1:
+if print_test_generator == 1:
 	print()
 	print('Test train generator')
 	test_train_generator()
 	print()
 
-if debug_test == 1:
+if print_test_generator == 1:
 	print()
 	print('Test valid generator')
 	test_valid_generator()
 	print()
 
-#model = model_test()
-model = model_nvidia_gada()
-print(model.summary())
-print()
+if do_training == 1:
+	#model = model_test()
+	model = model_nvidia_gada()
+	print(model.summary())
+	print()
 
-train_model(model)
+	# Train the model
+	train_model(model)
 
 print()
 print('done!!!')
