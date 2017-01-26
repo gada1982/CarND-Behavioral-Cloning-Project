@@ -26,8 +26,8 @@ global_count_left = 0
 global_count_center = 0
 global_count_right = 0
 global_count_valid = 0
-new_size_col = 64
-new_size_row = 64
+new_size_col = 47
+new_size_row = 160
 
 def load_data_info(path_of_data):
 	if not os.path.exists(path_of_data):
@@ -307,9 +307,9 @@ def modify_data_info(drive_data):
 
 	return new_drive_data_left, new_drive_data_center, new_drive_data_right, new_drive_data_valid
 
-def get_normalized_image(image):
+def get_normalized_hsv_image(image):
     # Change color-space from BGR to RGB
-    image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     # Normalize from -1 to 1 (zero mean)
     image = image / 127.5 - 1
     return image
@@ -531,14 +531,6 @@ def get_single_validation_data(data,number):
 	y = np.array([[y]])
 	return x	
 
-def get_preprocessed_image(image_path):
-    # TODO
-    file = image_path.strip()
-    image = cv2.imread(file)
-    image = get_normalized_image(image)
-    image = np.array(image)
-    return image
-
 
 def test_train_generator():
 	x, y = generate_train_data_int(printinfo = 1)
@@ -602,7 +594,9 @@ def train_model(model):
 def preprocessImage(image):
 	# Preprocessing image files
 	shape = image.shape
+	print('shape:',shape)
 	image = image[math.floor(shape[0]/4):shape[0]-25, 0:shape[1]]
+	image = get_normalized_hsv_image(image)
 	image = cv2.resize(image,(new_size_col,new_size_row), interpolation=cv2.INTER_AREA)    
 	return image 
 
