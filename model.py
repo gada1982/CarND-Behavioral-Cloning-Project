@@ -7,16 +7,24 @@ import os
 import numpy as np
 import csv
 import cv2
+import random
 from pathlib import Path
 
 # Imports for keras
-#from keras.models import Sequential, Model
-#from keras.layers import Convolution2D, Flatten, ELU, MaxPooling2D
-#from keras.layers.core import Dense, Dropout, Activation
-#from keras.optimizers import Adam
+from keras.models import Sequential, Model
+from keras.layers import Convolution2D, Flatten, ELU, MaxPooling2D
+from keras.layers.core import Dense, Dropout, Activation
+from keras.optimizers import Adam
 
 # Import json to save the model
-#import json
+import json
+
+# Define global variable
+# Check if it possible to get rid of the global variables, because of bad programming style
+global_count_left = 0
+global_count_center = 0
+global_count_right = 0
+global_count_valid = 0
 
 def load_data_info(path_of_data):
 	if not os.path.exists(path_of_data):
@@ -39,13 +47,10 @@ def load_data_info(path_of_data):
 	return drive_data_relevant
 
 def modify_data_info(drive_data):
-	print()
-	print('modify_data_info')
-	print(len(drive_data))
-	
 	count_left = 0
 	count_center = 0
 	count_right = 0
+	debug_data_generator = 0
 
 	# Count how many images are with steering left, steering right and nearly not steering
 	# Steering left: steering data < -0.1
@@ -256,8 +261,48 @@ def modify_data_info(drive_data):
 				i_center += 1
 			else:
 				print('error')
-			
-	return drive_data_left, drive_data_center, drive_data_right
+
+	if debug_data_generator == 1:
+		print('Left_Len: ', len(drive_data_left))
+		print('Center_Len: ', len(drive_data_center))
+		print('Right_Len: ', len(drive_data_right))
+		print()
+		print()
+		print('Left: ')
+		print(drive_data_left)
+		print('Center: ')
+		print(drive_data_center)
+		print('Right: ')
+		print(drive_data_right)
+
+	# Shuffle data to not have images always in the same order
+	# IMPORTANT
+	random.shuffle(drive_data_left)
+	random.shuffle(drive_data_center)
+	random.shuffle(drive_data_right)
+
+	if debug_data_generator == 1:
+		print('Left_Len: ', len(drive_data_left))
+		print('Center_Len: ', len(drive_data_center))
+		print('Right_Len: ', len(drive_data_right))
+		print('Valid_Len: ', len(drive_data_valid))
+
+	split_index = int(0.8 * len(drive_data_left))
+	new_drive_data_left,  drive_data_valid_tmp1 = np.split(drive_data_left, [split_index])
+	split_index = int(0.8 * len(drive_data_center))
+	new_drive_data_center,  drive_data_valid_tmp2 = np.split(drive_data_center, [split_index])
+	split_index = int(0.8 * len(drive_data_right))
+	new_drive_data_right,  drive_data_valid_tmp3 = np.split(drive_data_right, [split_index])
+
+	new_drive_data_valid = np.concatenate((drive_data_valid_tmp1, drive_data_valid_tmp2, drive_data_valid_tmp3), axis=0)
+	
+	if debug_data_generator == 1:
+		print('Länge Left nachher: ',len(new_drive_data_left))
+		print('Länge Center nachher: ',len(new_drive_data_center))
+		print('Länge Right nachher: ',len(new_drive_data_right))
+		print('Länge Valid nachher: ',len(new_drive_data_valid))
+
+	return new_drive_data_left, new_drive_data_center, new_drive_data_right, new_drive_data_valid
 
 def get_normalized_image(image):
     # Change color-space from BGR to RGB
@@ -269,6 +314,7 @@ def get_normalized_image(image):
 def print_image_data(data, number):
 	# Print out some information about one image
 	image_name = data[number][0]
+	image_name = image_name.strip()
 	image_path = path_of_data + '/' + image_name
 	print()
 	print('Datastring:')
@@ -284,6 +330,7 @@ def print_image_data(data, number):
 def get_image_shape(data, number):
 	# Print out some information about one image
 	image_name = data[number][0]
+	image_name = image_name.strip()
 	image_path = path_of_data + '/' + image_name
 	image = cv2.imread(image_path)
 	image_shape = image.shape
@@ -369,31 +416,94 @@ def model_nvidia_gada():
 
     return model
 
-def generate_train_data(data):
+def generate_train_data():
 	# Generate training data
 	while 1:
-		x, y = generate_train_data_int(data, printinfo = 0)
+		x, y = generate_train_data_int(printinfo = 0)
 		yield x, y
 
-def generate_valid_data(data):
+def generate_valid_data():
 	# Generate validation data
 	# TODO: Send all data for validation
 	while 1:
-		x, y = generate_valid_data_int(data, printinfo = 0)
+		x, y = generate_valid_data_int(printinfo = 0)
 		yield x, y
 	
-def generate_train_data_int(data, printinfo):
+def generate_valid_data_int(printinfo):
 	# TODO: Preprocessing
-	i = np.random.randint(len(data))
-	image_name = data[i][0]
+	
+	# Check if it possible to get rid of the global variables, because of bad programming style
+	global global_count_valid
+	
+	data = drive_data_valid
+	count_index = global_count_valid
+	global_count_valid += 1
+	if global_count_valid == len(drive_data_valid):
+		global_count_valid = 0
+
+	image_name = data[count_index][0]
+	image_name = image_name.strip()
 	image_path = path_of_data + '/' + image_name
 	if printinfo == 1:
 		print()
 		print('Image to generate:')
 		print(image_path)
 	x = cv2.imread(image_path)
+	if data[count_index][2] == 1:
+		# Image has to be flipped
+		x = cv2.flip(x,1)
 	x = x.reshape(1, x.shape[0], x.shape[1], x.shape[2])
-	y = data[i][1]
+	y = data[count_index][1]
+	y = np.array([[y]])
+	return x, y
+
+def generate_train_data_int(printinfo):
+	# TODO: Preprocessing
+	
+	# Check if it possible to get rid of the global variables, because of bad programming style
+	global global_count_left
+	global global_count_center
+	global global_count_right
+
+	# Choose randomly if an image with steering to 
+	# the left or right in the center image should be used
+	choose_data_pack = np.random.randint(0, 2)
+	
+	if choose_data_pack == 0:
+		# Choose drive_data_left
+		data = drive_data_left
+		count_index = global_count_left
+		global_count_left += 1
+		if global_count_left == len(drive_data_left):
+			global_count_left = 0
+	elif choose_data_pack == 1:
+		# Choose drive_data_center
+		data = drive_data_center
+		count_index = global_count_center
+		global_count_center += 1
+		if global_count_center == len(drive_data_center):
+			global_count_center = 0
+	else:
+		# Choose drive_data_right
+		data = drive_data_right
+		count_index = global_count_right
+		global_count_right += 1
+		if global_count_right == len(drive_data_right):
+			global_count_right = 0
+
+	image_name = data[count_index][0]
+	image_name = image_name.strip()
+	image_path = path_of_data + '/' + image_name
+	if printinfo == 1:
+		print()
+		print('Image to generate:')
+		print(image_path)
+	x = cv2.imread(image_path)
+	if data[count_index][2] == 1:
+		# Image has to be flipped
+		x = cv2.flip(x,1)
+	x = x.reshape(1, x.shape[0], x.shape[1], x.shape[2])
+	y = data[count_index][1]
 	y = np.array([[y]])
 	return x, y
 
@@ -401,6 +511,7 @@ def get_single_validation_data(data,number):
 	# TODO: Preprocessing
 	i = number
 	image_name = data[i][0]
+	image_name = image_name.strip()
 	image_path = path_of_data + '/' + image_name
 	print()
 	print('Single image to test:')
@@ -413,21 +524,6 @@ def get_single_validation_data(data,number):
 	y = np.array([[y]])
 	return x	
 
-def generate_valid_data_int(data, printinfo):
-	# TODO: Preprocessing
-	i = np.random.randint(len(data))
-	image_name = data[i][0]
-	image_path = path_of_data + '/' + image_name
-	if printinfo == 1:
-		print()
-		print('Image to generate:')
-		print(image_path)
-	x = cv2.imread(image_path)
-	x = x.reshape(1, x.shape[0], x.shape[1], x.shape[2])
-	y = data[i][1]
-	y = np.array([[y]])
-	return x, y
-
 def get_preprocessed_image(image_path):
     # TODO
     file = image_path.strip()
@@ -438,14 +534,14 @@ def get_preprocessed_image(image_path):
 
 
 def test_train_generator():
-	x, y = generate_train_data_int(drive_data_relevant, printinfo = 1)
+	x, y = generate_train_data_int(printinfo = 1)
 	print('Shape of image:')
 	print(x.shape)
 	print('Steering angle:')
 	print(y)
 
 def test_valid_generator():
-	x, y = generate_valid_data_int(drive_data_relevant, printinfo = 1)
+	x, y = generate_valid_data_int(printinfo = 1)
 	print('Shape of image:')
 	print(x.shape)
 	print('Steering angle:')
@@ -460,29 +556,30 @@ def train_model(model):
 	
 	model.compile(optimizer = adam_optimizer, loss = "mse")
 
-	data_generator_valid = generate_valid_data(drive_data_relevant)
-	valid_size = len(drive_data_relevant)
+	data_generator_valid = generate_valid_data()
 
-	data_generator_train = generate_train_data(drive_data_relevant)
+	data_generator_train = generate_train_data()
 
 	model_data = model.fit_generator(data_generator_train,
-            samples_per_epoch = 20000, nb_epoch = 1, validation_data = data_generator_valid,
-                        nb_val_samples = valid_size, verbose = 1)
+            samples_per_epoch = 100, nb_epoch = 1, validation_data = data_generator_valid,
+                        nb_val_samples = len(drive_data_valid), verbose = 1)
 
 
-	print(model_data)
-	X_validation = get_single_validation_data(drive_data_relevant, 0)
-	val_preds = model.predict(X_validation)
-	print('eins:',min(val_preds), max(val_preds))
-	X_validation = get_single_validation_data(drive_data_relevant, 1)
-	val_preds = model.predict(X_validation)
-	print('zwei:',min(val_preds), max(val_preds))
-	X_validation = get_single_validation_data(drive_data_relevant, 2)
-	val_preds = model.predict(X_validation)
-	print('drei:',min(val_preds), max(val_preds))
-	X_validation = get_single_validation_data(drive_data_relevant, 3)
-	val_preds = model.predict(X_validation)
-	print('vier:',min(val_preds), max(val_preds))
+	test_it = 0
+	if test_it == 1:
+		print(model_data)
+		X_validation = get_single_validation_data(drive_data_left, 0)
+		val_preds = model.predict(X_validation)
+		print('eins:',min(val_preds), max(val_preds))
+		X_validation = get_single_validation_data(drive_data_left, 1)
+		val_preds = model.predict(X_validation)
+		print('zwei:',min(val_preds), max(val_preds))
+		X_validation = get_single_validation_data(drive_data_left, 2)
+		val_preds = model.predict(X_validation)
+		print('drei:',min(val_preds), max(val_preds))
+		X_validation = get_single_validation_data(drive_data_left, 3)
+		val_preds = model.predict(X_validation)
+		print('vier:',min(val_preds), max(val_preds))
 
 	file_name_model = 'model.json'
 	file_name_weights = 'model.h5'
@@ -511,41 +608,30 @@ def save_trained_model(path_model, path_weights):
     model.save_weights(path_weights)
 
 # Configuration area
-debug_test = 1
-print_test_generator = 0
-do_training = 0
+debug_image_data = 0
+debug_train_generator = 1
+debug_valid_generator = 0
+do_training = 1
 
 
 path_of_data = './data_udacity'
 
 drive_data_relevant = load_data_info(path_of_data)
-drive_data_left, drive_data_center, drive_data_right = modify_data_info(drive_data_relevant)
-if debug_test == 1:
-	print('Left_Len: ', len(drive_data_left))
-	print('Center_Len: ', len(drive_data_center))
-	print('Right_Len: ', len(drive_data_right))
-	print()
-	print()
-	print('Left: ')
-	print(drive_data_left)
-	print('Center: ')
-	print(drive_data_center)
-	print('Right: ')
-	print(drive_data_right)
+drive_data_left, drive_data_center, drive_data_right, drive_data_valid = modify_data_info(drive_data_relevant)
 
 # Only for testing 
-if debug_test == 1:
+if debug_image_data == 1:
 	image_index = 2
-	print_image_data(drive_data_relevant, image_index)
+	print_image_data(drive_data_center, image_index)
 	print()
 
-if print_test_generator == 1:
+if debug_train_generator == 1:
 	print()
 	print('Test train generator')
 	test_train_generator()
 	print()
 
-if print_test_generator == 1:
+if debug_valid_generator == 1:
 	print()
 	print('Test valid generator')
 	test_valid_generator()
