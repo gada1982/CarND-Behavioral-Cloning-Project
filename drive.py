@@ -7,6 +7,8 @@ import socketio
 import eventlet
 import eventlet.wsgi
 import time
+import cv2
+import math
 from PIL import Image
 from PIL import ImageOps
 from flask import Flask, render_template
@@ -36,7 +38,8 @@ def telemetry(sid, data):
     # The current image from the center camera of the car
     imgString = data["image"]
     image = Image.open(BytesIO(base64.b64decode(imgString)))
-    image_array = np.asarray(image)
+    image_pre = np.asarray(image)
+    image_array = preprocess(image_pre)
     transformed_image_array = image_array[None, :, :, :]
     # This model currently assumes that the features of the model are just the images. Feel free to change this.
     steering_angle = float(model.predict(transformed_image_array, batch_size=1))
@@ -45,6 +48,14 @@ def telemetry(sid, data):
     print(steering_angle, throttle)
     send_control(steering_angle, throttle)
 
+def preprocess(image):
+    # get shape and chop off 1/3 from the top
+    shape = image.shape
+    # note: numpy arrays are (row, col)!
+    image = image[shape[0]/4:shape[0]-25, 0:shape[1]]
+    #image = cv2.resize(image, (200,66), interpolation=cv2.INTER_AREA)
+    image = cv2.resize(image, (64,64), interpolation=cv2.INTER_AREA)
+    return image
 
 @sio.on('connect')
 def connect(sid, environ):
