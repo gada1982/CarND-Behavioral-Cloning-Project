@@ -8,6 +8,7 @@ import numpy as np
 import csv
 import cv2
 import random
+import math
 from pathlib import Path
 
 # Imports for keras
@@ -25,6 +26,8 @@ global_count_left = 0
 global_count_center = 0
 global_count_right = 0
 global_count_valid = 0
+new_size_col = 64
+new_size_row = 64
 
 def load_data_info(path_of_data):
 	if not os.path.exists(path_of_data):
@@ -32,7 +35,7 @@ def load_data_info(path_of_data):
 		sys.exit(-1)
 
 	# Open *.csv with logged driving data
-	with open(path_of_data + '/driving_log_small.csv', 'r') as logfile:
+	with open(path_of_data + '/driving_log.csv', 'r') as logfile:
 		file_read = csv.reader(logfile, delimiter=',')
 		drive_data = []
 		for i in file_read:
@@ -393,8 +396,10 @@ def model_test():
 def model_nvidia_gada():
     # TODO: Check if model is okay -> Paper!!!
     model = Sequential()
-
-    row, col, ch = get_image_shape(drive_data_relevant, 0)
+    
+    row = new_size_row
+    col = new_size_col
+    ch = 3
     print('Expected shape: ',row, col, ch)
     model.add(Convolution2D(24, 5, 5, input_shape = (row, col, ch), subsample = (2, 2), border_mode = "valid", activation = 'relu', name = 'conv1'))
     model.add(Convolution2D(36, 5, 5, subsample = (2, 2), border_mode = "valid", activation = 'relu', name = 'conv2'))
@@ -452,6 +457,7 @@ def generate_valid_data_int(printinfo):
 	if data[count_index][2] == 1:
 		# Image has to be flipped
 		x = cv2.flip(x,1)
+	x = preprocessImage(x)
 	x = x.reshape(1, x.shape[0], x.shape[1], x.shape[2])
 	y = data[count_index][1]
 	y = np.array([[y]])
@@ -502,6 +508,7 @@ def generate_train_data_int(printinfo):
 	if data[count_index][2] == 1:
 		# Image has to be flipped
 		x = cv2.flip(x,1)
+	x = preprocessImage(x)
 	x = x.reshape(1, x.shape[0], x.shape[1], x.shape[2])
 	y = data[count_index][1]
 	y = np.array([[y]])
@@ -561,7 +568,7 @@ def train_model(model):
 	data_generator_train = generate_train_data()
 
 	model_data = model.fit_generator(data_generator_train,
-            samples_per_epoch = 100, nb_epoch = 1, validation_data = data_generator_valid,
+            samples_per_epoch = 20000, nb_epoch = 1, validation_data = data_generator_valid,
                         nb_val_samples = len(drive_data_valid), verbose = 1)
 
 
@@ -592,6 +599,12 @@ def train_model(model):
 	print()
 	print('It worked out.')
 
+def preprocessImage(image):
+	# Preprocessing image files
+	shape = image.shape
+	image = image[math.floor(shape[0]/4):shape[0]-25, 0:shape[1]]
+	image = cv2.resize(image,(new_size_col,new_size_row), interpolation=cv2.INTER_AREA)    
+	return image 
 
 def save_trained_model(path_model, path_weights):
     print('Save model at:')
@@ -618,6 +631,13 @@ path_of_data = './data_udacity'
 
 drive_data_relevant = load_data_info(path_of_data)
 drive_data_left, drive_data_center, drive_data_right, drive_data_valid = modify_data_info(drive_data_relevant)
+
+print()
+print('Left: ', len(drive_data_left))
+print('Center: ', len(drive_data_center))
+print('Right: ', len(drive_data_right))
+print('Valid: ', len(drive_data_valid))
+print()
 
 # Only for testing 
 if debug_image_data == 1:
