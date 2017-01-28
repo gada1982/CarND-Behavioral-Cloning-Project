@@ -10,6 +10,7 @@ import cv2
 import random
 import math
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 # Imports for keras
 from keras.models import Sequential, Model
@@ -26,8 +27,8 @@ global_count_left = 0
 global_count_center = 0
 global_count_right = 0
 global_count_valid = 0
-new_size_col = 64
-new_size_row = 94
+new_size_row = 64
+new_size_col = 94
 
 def load_data_info(path_of_data):
 	if not os.path.exists(path_of_data):
@@ -70,6 +71,12 @@ def modify_data_info(drive_data):
 			# Nearly no steering: -0.1 <= steering data <= 0.1
 			count_center += 1
 
+	print('Original dataset: ')
+	print('Steer left: ', count_left)
+	print('Steer center: ', count_center)
+	print('Steer right: ', count_right)	
+	print()
+
 	w = 3
 	# leep space for flipped images
 	h_left = (count_left + count_right ) * 3
@@ -82,7 +89,7 @@ def modify_data_info(drive_data):
 	drive_data_center = [[0 for x in range(w)] for y in range(h_center)]
 	drive_data_right = [[0 for x in range(w)] for y in range(h_right)]
 	
-	steering_offset = 0.2
+	steering_offset = 0.25
 	i_left = 0
 	i_center = 0
 	i_right = 0
@@ -135,7 +142,8 @@ def modify_data_info(drive_data):
 				i_right += 1
 			else:
 				print('error')
-			# Include image of left camera
+			# Include image of left camera 
+			# After flipping it is treatened like an image from the right camera
 			if i_right < len(drive_data_right):
 				# Set image name of the center image
 				drive_data_right[i_right][0] = drive_data[i][1]
@@ -147,6 +155,7 @@ def modify_data_info(drive_data):
 			else:
 				print('error')
 			# Include image of right camera
+			# After flipping it is treatened like an image from the left camera
 			if i_right < len(drive_data_right):
 				# Set image name of the center image
 				drive_data_right[i_right][0] = drive_data[i][2]
@@ -307,9 +316,17 @@ def modify_data_info(drive_data):
 
 	return new_drive_data_left, new_drive_data_center, new_drive_data_right, new_drive_data_valid
 
+def random_change_brightness(image):
+	# Image is already in HSV Color
+	# Change brightness by randomly changing of the V channel
+	image[:,:,2] = image[:,:,2] * (np.random.uniform() + .25)
+	return image
+
 def get_normalized_hsv_image(image):
-    # Change color-space from BGR to RGB
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    # Change color-space from RGB to HSV
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    # brightness change is only done while training not in drive.py
+    image = random_change_brightness(image)
     # Normalize from -1 to 1 (zero mean)
     image = image / 127.5 - 1
     return image
@@ -324,7 +341,7 @@ def print_image_data(data, number):
 	print(data[number])
 	print('Image:')
 	print(image_path)
-	image = cv2.imread(image_path)
+	image = plt.imread(image_path)
 	print('Shape of the image:')
 	print(image.shape)
 	print('Steering angle for the image:')
@@ -335,12 +352,11 @@ def get_image_shape(data, number):
 	image_name = data[number][0]
 	image_name = image_name.strip()
 	image_path = path_of_data + '/' + image_name
-	image = cv2.imread(image_path)
+	image = plt.imread(image_path)
 	image_shape = image.shape
 	return image_shape
 
 def model_test():
-	new_size_row, new_size_col, ch = get_image_shape(drive_data_relevant, 0)
 	input_shape = (new_size_row, new_size_col, 3)
 	filter_size = 3
 	pool_size = (2,2)
@@ -401,22 +417,32 @@ def model_nvidia_gada():
     col = new_size_col
     ch = 3
     print('Expected shape: ',row, col, ch)
-    model.add(Convolution2D(24, 5, 5, input_shape = (row, col, ch), subsample = (2, 2), border_mode = "valid", activation = 'relu', name = 'conv1'))
-    model.add(Convolution2D(36, 5, 5, subsample = (2, 2), border_mode = "valid", activation = 'relu', name = 'conv2'))
-    model.add(Convolution2D(48, 5, 5, subsample = (2, 2), border_mode = "valid", activation = 'relu', name = 'conv3'))
-    model.add(Convolution2D(64, 3, 3, subsample = (1, 1), border_mode = "valid", activation = 'relu', name = 'conv4'))
-    model.add(Convolution2D(64, 3, 3, subsample = (1, 1), border_mode = "valid", activation = 'relu', name = 'conv5'))
+    model.add(Convolution2D(24, 5, 5, input_shape = (row, col, ch), subsample = (2, 2), border_mode = "valid", name = 'conv1'))
+    model.add(ELU())
+    model.add(Convolution2D(36, 5, 5, subsample = (2, 2), border_mode = "valid", name = 'conv2'))
+    model.add(ELU())
+    model.add(Convolution2D(48, 5, 5, subsample = (2, 2), border_mode = "valid", name = 'conv3'))
+    model.add(ELU())
+    model.add(Convolution2D(64, 3, 3, subsample = (1, 1), border_mode = "valid", name = 'conv4'))
+    model.add(ELU())
+    model.add(Convolution2D(64, 3, 3, subsample = (1, 1), border_mode = "valid", name = 'conv5'))
     
     model.add(Flatten())
-    model.add(Activation('relu'))
 
-    model.add(Dense(1164))
-    model.add(Dropout(0.5))
-    model.add(Activation('relu'))
+    model.add(Dense(1164, name = 'fc1'))
+    model.add(ELU())
+    model.add(Dropout(0.3))
     
-    model.add(Dense(100, name = 'fc1'))
-    model.add(Dense(50, name = 'fc2'))
-    model.add(Dense(10, name = 'fc3'))
+    model.add(Dense(100, name = 'fc2'))
+    model.add(ELU())
+    model.add(Dropout(0.3))
+
+    model.add(Dense(50, name = 'fc3'))
+    model.add(ELU())
+    model.add(Dropout(0.3))
+    
+    model.add(Dense(10, name = 'fc4'))
+    model.add(ELU())
     model.add(Dense(1, name = 'output'))
 
     return model
@@ -453,7 +479,7 @@ def generate_valid_data_int(printinfo):
 		print()
 		print('Image to generate:')
 		print(image_path)
-	x = cv2.imread(image_path)
+	x = plt.imread(image_path)
 	if data[count_index][2] == 1:
 		# Image has to be flipped
 		x = cv2.flip(x,1)
@@ -504,7 +530,7 @@ def generate_train_data_int(printinfo):
 		print()
 		print('Image to generate:')
 		print(image_path)
-	x = cv2.imread(image_path)
+	x = plt.imread(image_path)
 	if data[count_index][2] == 1:
 		# Image has to be flipped
 		x = cv2.flip(x,1)
@@ -523,7 +549,7 @@ def get_single_validation_data(data,number):
 	print()
 	print('Single image to test:')
 	print(image_path)
-	x = cv2.imread(image_path)
+	x = plt.imread(image_path)
 	x = x.reshape(1, x.shape[0], x.shape[1], x.shape[2])
 	y = data[i][1]
 	print('Steering angle y: ', y)
