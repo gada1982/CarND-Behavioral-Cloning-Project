@@ -52,6 +52,50 @@ Within the project Deep Learning is used. Training only happens with data from T
 In the final solution the car has to successfully drive autonomously and without getting off the road on Track 1. Track 2 is only for self evaluation.
 
 ## Approach while Development
+A good starting point for the project has been a [paper](http://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf) from NVIDIA. Finally the CNN, which has been used in this project is strongly influenced by the the model mentioned in this paper.
+
+At the beginning I tried to collect own training data with the simulator. Using a keyboard produces mostly data with steering angle zero and the driving was not really smooth. Because of this I decided to start with the sample data (see chapter Requirements).
+
+### Data is the key
+While training an artificial neuronal network *Garbage in - Garbage out* really matters. Understanding the data and getting the balanced dataset are the key figures.
+
+The simulator delivers images of  left / center / right camera mounted at the front-window of the car.
+In the dataset the following data is stored (additional to the images).
+center_image, left_image, right_image, steering-data, throttle-data, brake-data, speed-data
+This data is stored in an .csv-file.
+Only center_image, left_image, right_image and steering-data are used.
+
+#### Training, Validation and Testing data
+The input data (sample data or own collected data) is shuffled and split up in training data and validation data. 15% of the data is used for validation. The validation data is NOT used for training at all.
+No own testing data is split up because during development I found out that only testing in the simulator can give a reliable feedback if the final model works in a proper way.
+
+#### Distribution of the training data
+
+#### Modification of the training data
+Because of bad distribution within the training data the following tasks are made.
+- Useage of images from left-camera and right camera
+  - Steering angle correction of +/- 0.25
+  - This amount was found out experimentally, in a real world example this can be calculated out of the geometry
+- Flip images (vertical axis)
+  - left-camera-image -> right-camera-image (with inverse steering angle)
+  - right-camera-image -> left-camera-image (with inverse steering angle)
+- Randomly adjustment of brightness
+  - to avoid the model from getting biasd to lighter or darker conditions
+- Change from RGB to HSV Color-Space
+  
+To avoid getting biasd to drive straight the data has been split up in three groups.
+- Steer left ( x < -0.10 )
+- No steering ( -0.10 <= x <= 0.1 )
+- Steer right ( x < 0.10 )
+
+Out of the groups the data is randomly selected while generating the training batch (by using fit_generator)
+
+## Normalization
+Normalize the values (between -1 to 1). Normalisation of images doesn't change the content of the images, but it makes it much easier for the optimization to proceed numerical and the variables should always have zero mean, if possible.
+
+
+
+
 
   
 
