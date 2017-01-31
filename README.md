@@ -52,7 +52,7 @@ Within the project Deep Learning is used. Training only happens with data from T
 In the final solution the car has to successfully drive autonomously and without getting off the road on Track 1. Track 2 is only for self evaluation.
 
 ## Approach while Development
-A good starting point for the project has been a [paper](http://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf) from NVIDIA. Finally the CNN, which has been used in this project is strongly influenced by the the model mentioned in this paper.
+A good starting point for the project has been a [paper](http://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf) from NVIDIA. Finally the CNN, which has been used in this project is strongly influenced by the model mentioned in this paper.
 
 At the beginning I tried to collect own training data with the simulator. Using a keyboard produces mostly data with steering angle zero and the driving was not really smooth. Because of this I decided to start with the sample data (see chapter Requirements).
 
@@ -91,9 +91,64 @@ To avoid getting biasd to drive straight the data has been split up in three gro
 Out of the groups the data is randomly selected while generating the training batch (by using fit_generator)
 
 ## Normalization
-Normalize the values (between -1 to 1). Normalisation of images doesn't change the content of the images, but it makes it much easier for the optimization to proceed numerical and the variables should always have zero mean, if possible.
+Normalize the values (between -1 to 1). Normalisation of images doesn't change the content of the images, but it makes it much easier for the optimization to proceed numerical and the variables should always have zero mean, if possible. This is done within the model.
 
+## Preprocess images
+The model should only learn "reading" the track and shouldn't be influence by the hood of the car or the sky. Because of this, the images (160x320) are taken cut by TODO XXpx on top and XXpx on the bottom. This gives an image size of XXx320.
+After the lot of test I found out that the image size can by shrinked without big disadvantages. So the images are shrinked from XXx320 to 64x64 before feeding into the model. Furthermore images are changed from RGB to HSV Color-Space because this gave better results.
+IMPORTANT: Preprocessing has to be done with training and testing data. This preprocessing has to be included into drive.py too.
 
+## Generation of training and validation data
+The model for the artificial neuronal network is trained with [Keras](https://keras.io/) and a Tensorflow backend. In this project lots of data is needed. Because of this, it is not useful to keep the hole data in memory, as this was done in the last project. To get training and validation data fit_generator is used.
+Additionally random data augmentation is included in the data-generators.
+
+Two different generators are used. One for training data and one for validation data.
+- Training generator
+TODO
+
+- Validation generator
+TODO
+
+# Model / Architecture
+As mentioned above the [paper](http://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf) from NVIDIA has strongly influenced the model which was finally used for this project.
+
+- Layer 1: Normalization of the input 
+  - Normalize the images within the range -1 to 1
+    - This could be done outside the model too (while preprocessing), but including this into the model is much smarter.
+- Layer 2: Convolution Layer
+  - Filter Size: 5x5
+- Layer 3: Convolution Layer 
+  - Filter Size: 5x5
+- Layer 4: Convolution Layer 
+  - Filter Size: 5x5
+- Layer 5: Convolution Layer 
+  - Filter Size: 3x3
+- Layer 6: Convolution Layer 
+  - Filter Size: 3x3
+- Layer 7: Flatten
+- Layer 8: Fully Connected Layer
+  - Size: 80
+  - L2 Regularization: 0.001
+  - Dropout: 0.5
+- Layer 9: Fully Connected Layer
+  - Size: 40
+  - L2 Regularization: 0.001
+  - Dropout: 0.5
+- Layer 10: Fully Connected Layer
+  - Size: 16
+  - L2 Regularization: 0.001
+- Layer 11: Fully Connected Layer
+  - Size: 10
+  - L2 Regularization: 0.001
+- Layer 12: Fully Connected Layer - Output Layer
+  - Size: 1
+  - L2 Regularization: 0.001
+
+To avoid overfitting, 50% Dropout is used for the first two (TODO) fully connected layers. L2 weight regularization is in every layer for getting a better driving, which is less snappy. 
+
+For this model / project an Adam optimizer seems to be the best solution. To avoid jumping around a rather small learning rate (0.0001) has been used.
+
+TODO include images from paper.
 
 
 
