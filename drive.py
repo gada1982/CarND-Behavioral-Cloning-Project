@@ -45,11 +45,13 @@ def telemetry(sid, data):
     steering_angle = float(model.predict(transformed_image_array, batch_size=1))
     # The driving model currently just outputs a constant throttle. Feel free to edit this.
     # Originally it was 0.2 -> modified to go better up the hill
-    throttle = 0.27
+    throttle = 0.25
     print(steering_angle, throttle)
     send_control(steering_angle, throttle)
 
 def cut_and_resize_image(image):
+  new_size_row = 64
+  new_size_col = 64
   # Cut image on top (50px) to cut the sky and bottom (20px) to cut the hood of the car
   image_cut = image[50:140,:]
   # Resize the image to the defined input size for the neuronal network
