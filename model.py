@@ -11,621 +11,499 @@ import random
 import math
 from pathlib import Path
 import matplotlib.pyplot as plt
+from sklearn.utils import shuffle
+from sklearn.model_selection import train_test_split
+import matplotlib.image as mpimg
 
 # Imports for keras
-from keras.models import Sequential, Model
-from keras.layers import Convolution2D, Flatten, ELU, MaxPooling2D
-from keras.layers.core import Dense, Dropout, Activation
-from keras.optimizers import Adam
+#from keras.models import Sequential, Model
+#from keras.layers import Convolution2D, Flatten, Lambda
+#from keras.layers.core import Dense, Dropout, Activation
+#from keras.optimizers import Adam
+#from keras.regularizers import l2
 
 # Import json to save the model
 import json
 
 # Define global variable
-# Check if it possible to get rid of the global variables, because of bad programming style
-global_count_left = 0
-global_count_center = 0
-global_count_right = 0
-global_count_valid = 0
+# TODO: Check if it possible to get rid of the global variables, because of bad programming style
 new_size_row = 64
-new_size_col = 94
+new_size_col = 64
+new_size_ch = 3
+number_of_epochs = 20
+batch_size = 128
 
-def load_data_info(path_of_data):
-	if not os.path.exists(path_of_data):
-		print("Directory with data not found.")
-		sys.exit(-1)
-
-	# Open *.csv with logged driving data
-	with open(path_of_data + '/driving_log.csv', 'r') as logfile:
-		file_read = csv.reader(logfile, delimiter=',')
-		drive_data = []
-		for i in file_read:
-			drive_data.append(i)
-
-	# The log file data is available in the following type: 
-	# center_image, left_image, right_image, steering-data, throttle-data, brake-data, speed-data
-	# Onyl center_image, left_image, right_image and steering-data are used 
-	drive_data = np.array( drive_data )
-	drive_data_relevant = np.hstack(( drive_data[1:, 0].reshape((-1,1)), drive_data[1:, 1].reshape((-1,1)), drive_data[1:, 2].reshape((-1,1)), drive_data[1:,3].reshape((-1,1))))
-
-	return drive_data_relevant
-
-def modify_data_info(drive_data):
-	count_left = 0
-	count_center = 0
-	count_right = 0
-	debug_data_generator = 0
-
-	# Count how many images are with steering left, steering right and nearly not steering
-	# Steering left: steering data < -0.1
-	# Steering right: steering data > 0.1
-	# Nearly no steering: -0.1 <= steering data <= 0.1
-	for i in range(0, len(drive_data)):
-		if float(drive_data[i][3]) < - 0.1:
-			# Steering left: steering data < -0.1
-			count_left += 1
-		elif float(drive_data[i][3]) > 0.1:
-			# Steering right: steering data > 0.1
-			count_right += 1
-		else: 
-			# Nearly no steering: -0.1 <= steering data <= 0.1
-			count_center += 1
-
-	print('Original dataset: ')
-	print('Steer left: ', count_left)
-	print('Steer center: ', count_center)
-	print('Steer right: ', count_right)	
-	print()
-
-	w = 3
-	# leep space for flipped images
-	h_left = (count_left + count_right ) * 3
-	# No flipping of center images
-	h_center = count_center * 3
-	# leep space for flipped images
-	h_right =  (count_left + count_right ) * 3
-
-	drive_data_left = [[0 for x in range(w)] for y in range(h_left)]
-	drive_data_center = [[0 for x in range(w)] for y in range(h_center)]
-	drive_data_right = [[0 for x in range(w)] for y in range(h_right)]
-	
-	steering_offset = 0.25
-	i_left = 0
-	i_center = 0
-	i_right = 0
-	for i in range(0, len(drive_data)):
-		if float(drive_data[i][3]) < - 0.1:
-			# Steering left: steering data < -0.1
-			# Include image of center camera
-			if i_left < len(drive_data_left):
-				# Set image name
-				drive_data_left[i_left][0] = drive_data[i][0]
-				# Set steering angle
-				drive_data_left[i_left][1] = drive_data[i][3]
-				# Not flipped image
-				drive_data_left[i_left][2] = 0
-				i_left += 1
-			else:
-				print('error')
-			# Include image of left camera
-			if i_left < len(drive_data_left):
-				# Set image name
-				drive_data_left[i_left][0] = drive_data[i][1]
-				# Set steering angle
-				drive_data_left[i_left][1] = str(float(drive_data[i][3]) + steering_offset)
-				# Not flipped image
-				drive_data_left[i_left][2] = 0
-				i_left += 1
-			else:
-				print('error')
-			# Include image of right camera
-			if i_left < len(drive_data_left):
-				# Set image name
-				drive_data_left[i_left][0] = drive_data[i][2]
-				# Set steering angle
-				drive_data_left[i_left][1] = str(float(drive_data[i][3]) - steering_offset)
-				# Not flipped image
-				drive_data_left[i_left][2] = 0
-				i_left += 1
-			else:
-				print('error')
-
-			# Include flipped images (center, left, right)
-			# Include image of center camera
-			if i_right < len(drive_data_right):
-				# Set image name of the center image
-				drive_data_right[i_right][0] = drive_data[i][0]
-				# Set steering angle (flipped)
-				drive_data_right[i_right][1] = str(float(drive_data[i][3]) * - 1 )
-				# Not flipped image
-				drive_data_right[i_right][2] = 1
-				i_right += 1
-			else:
-				print('error')
-			# Include image of left camera 
-			# After flipping it is treatened like an image from the right camera
-			if i_right < len(drive_data_right):
-				# Set image name of the center image
-				drive_data_right[i_right][0] = drive_data[i][1]
-				# Set steering angle (flipped)
-				drive_data_right[i_right][1] = str((float(drive_data[i][3]) * - 1 ) - steering_offset)
-				# Not flipped image
-				drive_data_right[i_right][2] = 1
-				i_right += 1
-			else:
-				print('error')
-			# Include image of right camera
-			# After flipping it is treatened like an image from the left camera
-			if i_right < len(drive_data_right):
-				# Set image name of the center image
-				drive_data_right[i_right][0] = drive_data[i][2]
-				# Set steering angle (flipped)
-				drive_data_right[i_right][1] = str((float(drive_data[i][3]) * - 1 ) + steering_offset)
-				# Not flipped image
-				drive_data_right[i_right][2] = 1
-				i_right += 1
-			else:
-				print('error')
-
-		elif float(drive_data[i][3]) > 0.1:
-			# Steering right: steering data > 0.1
-			# Include image of center camera
-			if i_right < len(drive_data_right):
-				# Set image name
-				drive_data_right[i_right][0] = drive_data[i][0]
-				# Set steering angle
-				drive_data_right[i_right][1] = drive_data[i][3]
-				# Not flipped image
-				drive_data_right[i_right][2] = 0
-				i_right += 1
-			else:
-				print('error')
-			# Include image of left camera
-			if i_right < len(drive_data_right):
-				# Set image name
-				drive_data_right[i_right][0] = drive_data[i][1]
-				# Set steering angle
-				drive_data_right[i_right][1] = str(float(drive_data[i][3]) + steering_offset)
-				# Not flipped image
-				drive_data_right[i_right][2] = 0
-				i_right += 1
-			else:
-				print('error')
-			# Include image of right camera
-			if i_right < len(drive_data_right):
-				# Set image name
-				drive_data_right[i_right][0] = drive_data[i][2]
-				# Set steering angle
-				drive_data_right[i_right][1] = str(float(drive_data[i][3]) - steering_offset)
-				# Not flipped image
-				drive_data_right[i_right][2] = 0
-				i_right += 1
-			else:
-				print('error')
-
-			# Include flipped images (center, left, right)
-			# Include image of center camera
-			if i_left < len(drive_data_left):
-				# Set image name of the center image
-				drive_data_left[i_left][0] = drive_data[i][0]
-				# Set steering angle (flipped)
-				drive_data_left[i_left][1] = str(float(drive_data[i][3]) * - 1 )
-				# Not flipped image
-				drive_data_left[i_left][2] = 1
-				i_left += 1
-			else:
-				print('error')
-			# Include image of left camera
-			if i_left < len(drive_data_left):
-				# Set image name of the center image
-				drive_data_left[i_left][0] = drive_data[i][1]
-				# Set steering angle (flipped)
-				drive_data_left[i_left][1] = str((float(drive_data[i][3]) * - 1 ) - steering_offset)
-				# Not flipped image
-				drive_data_left[i_left][2] = 1
-				i_left += 1
-			else:
-				print('error')
-			# Include image of right camera
-			if i_left < len(drive_data_left):
-				# Set image name of the center image
-				drive_data_left[i_left][0] = drive_data[i][2]
-				# Set steering angle (flipped)
-				drive_data_left[i_left][1] = str((float(drive_data[i][3]) * - 1 ) + steering_offset)
-				# Not flipped image
-				drive_data_left[i_left][2] = 1
-				i_left += 1
-			else:
-				print('error')
-		
-		else: 
-			# Nearly no steering: -0.1 <= steering data <= 0.1
-			# Include image of center camera
-			if i_center < len(drive_data_center):
-				# Set image name
-				drive_data_center[i_center][0] = drive_data[i][0]
-				# Set steering angle
-				drive_data_center[i_center][1] = drive_data[i][3]
-				# Not flipped image
-				drive_data_center[i_center][2] = 0
-				i_center += 1
-			else:
-				print('error')
-			# Include image of left camera
-			if i_center < len(drive_data_center):
-				# Set image name
-				drive_data_center[i_center][0] = drive_data[i][1]
-				# Set steering angle
-				drive_data_center[i_center][1] = str(float(drive_data[i][3]) + steering_offset)
-				# Not flipped image
-				drive_data_center[i_center][2] = 0
-				i_center += 1
-			else:
-				print('error')
-			# Include image of right camera
-			if i_center < len(drive_data_center):
-				# Set image name
-				drive_data_center[i_center][0] = drive_data[i][2]
-				# Set steering angle
-				drive_data_center[i_center][1] = str(float(drive_data[i][3]) - steering_offset)
-				# Not flipped image
-				drive_data_center[i_center][2] = 0
-				i_center += 1
-			else:
-				print('error')
-
-	if debug_data_generator == 1:
-		print('Left_Len: ', len(drive_data_left))
-		print('Center_Len: ', len(drive_data_center))
-		print('Right_Len: ', len(drive_data_right))
-		print()
-		print()
-		print('Left: ')
-		print(drive_data_left)
-		print('Center: ')
-		print(drive_data_center)
-		print('Right: ')
-		print(drive_data_right)
-
-	# Shuffle data to not have images always in the same order
-	# IMPORTANT
-	random.shuffle(drive_data_left)
-	random.shuffle(drive_data_center)
-	random.shuffle(drive_data_right)
-
-	if debug_data_generator == 1:
-		print('Left_Len: ', len(drive_data_left))
-		print('Center_Len: ', len(drive_data_center))
-		print('Right_Len: ', len(drive_data_right))
-		print('Valid_Len: ', len(drive_data_valid))
-
-	split_index = int(0.8 * len(drive_data_left))
-	new_drive_data_left,  drive_data_valid_tmp1 = np.split(drive_data_left, [split_index])
-	split_index = int(0.8 * len(drive_data_center))
-	new_drive_data_center,  drive_data_valid_tmp2 = np.split(drive_data_center, [split_index])
-	split_index = int(0.8 * len(drive_data_right))
-	new_drive_data_right,  drive_data_valid_tmp3 = np.split(drive_data_right, [split_index])
-
-	new_drive_data_valid = np.concatenate((drive_data_valid_tmp1, drive_data_valid_tmp2, drive_data_valid_tmp3), axis=0)
-	
-	if debug_data_generator == 1:
-		print('Länge Left nachher: ',len(new_drive_data_left))
-		print('Länge Center nachher: ',len(new_drive_data_center))
-		print('Länge Right nachher: ',len(new_drive_data_right))
-		print('Länge Valid nachher: ',len(new_drive_data_valid))
-
-	return new_drive_data_left, new_drive_data_center, new_drive_data_right, new_drive_data_valid
-
-def random_change_brightness(image):
-	# Image is already in HSV Color
-	# Change brightness by randomly changing of the V channel
-	image[:,:,2] = image[:,:,2] * (np.random.uniform() + .25)
-	return image
-
-def get_normalized_hsv_image(image):
-    # Change color-space from RGB to HSV
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-    # brightness change is only done while training not in drive.py
-    image = random_change_brightness(image)
-    # Normalize from -1 to 1 (zero mean)
-    image = image / 127.5 - 1
-    return image
-
-def print_image_data(data, number):
-	# Print out some information about one image
-	image_name = data[number][0]
-	image_name = image_name.strip()
-	image_path = path_of_data + '/' + image_name
-	print()
-	print('Datastring:')
-	print(data[number])
-	print('Image:')
-	print(image_path)
-	image = plt.imread(image_path)
-	print('Shape of the image:')
-	print(image.shape)
-	print('Steering angle for the image:')
-	print(data[number][1])
-
-def get_image_shape(data, number):
-	# Print out some information about one image
-	image_name = data[number][0]
-	image_name = image_name.strip()
-	image_path = path_of_data + '/' + image_name
-	image = plt.imread(image_path)
-	image_shape = image.shape
-	return image_shape
-
-def model_test():
-	input_shape = (new_size_row, new_size_col, 3)
-	filter_size = 3
-	pool_size = (2,2)
-	model = Sequential()
-	model.add(Convolution2D(3,1,1,
-                        border_mode='valid',
-                        name='conv0', init='he_normal', input_shape=input_shape))
-	model.add(Convolution2D(32,filter_size,filter_size,
-                        border_mode='valid',
-                        name='conv1', init='he_normal'))
-	model.add(ELU())
-	model.add(Convolution2D(32,filter_size,filter_size,
-                        border_mode='valid',
-                        name='conv2', init='he_normal'))
-	model.add(ELU())
-	model.add(MaxPooling2D(pool_size=pool_size))
-	model.add(Dropout(0.5))
-	model.add(Convolution2D(64,filter_size,filter_size,
-                        border_mode='valid',
-                        name='conv3', init='he_normal'))
-	model.add(ELU())
-
-	model.add(Convolution2D(64,filter_size,filter_size,
-                        border_mode='valid',
-                        name='conv4', init='he_normal'))
-	model.add(ELU())
-	model.add(MaxPooling2D(pool_size=pool_size))
-	model.add(Dropout(0.5))
-	model.add(Convolution2D(128,filter_size,filter_size,
-                        border_mode='valid',
-                        name='conv5', init='he_normal'))
-	model.add(ELU())
-	model.add(Convolution2D(128,filter_size,filter_size,
-                        border_mode='valid',
-                        name='conv6', init='he_normal'))
-	model.add(ELU())
-	model.add(MaxPooling2D(pool_size=pool_size))
-	model.add(Dropout(0.5))
-	model.add(Flatten())
-	model.add(Dense(512,name='hidden1', init='he_normal'))
-	model.add(ELU())
-	model.add(Dropout(0.5))
-	model.add(Dense(64,name='hidden2', init='he_normal'))
-	model.add(ELU())
-	model.add(Dropout(0.5))
-	model.add(Dense(16,name='hidden3',init='he_normal'))
-	model.add(ELU())
-	model.add(Dropout(0.5))
-	model.add(Dense(1, name='output', init='he_normal'))
-	return model
+path_of_data = './data_udacity/'
 
 
-def model_nvidia_gada():
-    # TODO: Check if model is okay -> Paper!!!
-    model = Sequential()
+'''
+OWN
+'''
+def load_data_info(path):
+  if not os.path.exists(path_of_data):
+    print("Directory with data not found.")
+    sys.exit(-1)
+
+  # Open *.csv with logged driving data
+  with open(path + 'driving_log.csv', 'r') as logfile:
+    file_read = csv.reader(logfile, delimiter=',')
+    drive_data = []
+    for i in file_read:
+      drive_data.append(i)
+
+  # The log file data is available in the following type: 
+  # center_image, left_image, right_image, steering-data, throttle-data, brake-data, speed-data
+  # Onyl center_image, left_image, right_image and steering-data are used 
+  drive_data = np.array( drive_data )
+  drive_data_relevant = np.hstack(( drive_data[1:, 0].reshape((-1,1)), drive_data[1:, 1].reshape((-1,1)), drive_data[1:, 2].reshape((-1,1)), drive_data[1:,3].reshape((-1,1))))
+
+  return drive_data_relevant
+
+'''
+OWN
+'''
+def split_data_info(drive_data):
+  center_img = []
+  left_img = []
+  right_img = []
+  steer_angle_center = []
+  steer_angle_l_r = []
+
+  for i in range(0, len(drive_data)):
+    center_img.append(drive_data[i][0])
+    left_img.append(drive_data[i][1])
+    right_img.append(drive_data[i][2])
+    steer_angle_center.append(drive_data[i][3])
+    steer_angle_l_r.append(drive_data[i][3])
+
+  return center_img, left_img, right_img, steer_angle_center, steer_angle_l_r
+
+'''
+OWN
+'''
+def split_train_valid(center_img, steer_angle_center):
+  # TODO Comment, set to 20% ?
+  center_img, steer_angle_center = shuffle(center_img, steer_angle_center)
+  center_img, X_valid, steer_angle_center, y_valid = train_test_split(center_img, steer_angle_center, test_size = 0.10, random_state = 42) 
+  print()
+  print('Number of images for validation: ', len(X_valid))
+  print()
+
+  return center_img, X_valid, steer_angle_center, y_valid
+
+'''
+OWN
+'''
+def print_info_data_set(data, type):
+  class_info = [0, 0 ,0, 0, 0 ,0, 0, 0 ,0, 0, 0]
+
+  # Total number of entries
+  print('Total number: ', len(data))
+  for i in range(0, len(data)):
+    if type == 0:
+      value = float(data[i][3])
+    elif type == 1:
+      value = float(data[i])
+    else:
+      value = float(data[i][1])
+    if value < -0.9:
+      class_info[0] += 1
+    elif value < -0.7:
+      class_info[1] += 1
+    elif value < -0.5:
+      class_info[2] += 1
+    elif value < -0.3:
+      class_info[3] += 1
+    elif value < -0.1:
+      class_info[4] += 1
+    elif value <= 0.1:
+      class_info[5] += 1
+    elif value <= 0.3:
+      class_info[6] += 1
+    elif value <= 0.5:
+      class_info[7] += 1
+    elif value <= 0.7:
+      class_info[8] += 1
+    elif value <= 0.9:
+      class_info[9] += 1
+    else:
+      class_info[10] += 1
+
+  print('Class distribution: ', class_info)
+
+
+'''
+OWN
+'''
+def split_data_left_straight_right(img_list_center, steering_list_center, img_list_left, img_list_right, steering_list_l_r):
+  w = 2
+  print_debug = 1
+  drive_data_steer_left = [[0 for x in range(w)] for y in range(1)]
+  drive_data_straight = [[0 for x in range(w)] for y in range(1)]
+  drive_data_steer_right = [[0 for x in range(w)] for y in range(1)]
+  drive_data_steer_left_app = [[0 for x in range(w)] for y in range(1)]
+  drive_data_straight_app = [[0 for x in range(w)] for y in range(1)]
+  drive_data_steer_right_app = [[0 for x in range(w)] for y in range(1)]
+  
+  found_left = 0
+  found_straight = 0
+  found_right = 0
+  split_left = -0.15 #TODO try different value
+  split_right = -1 * split_left
+
+  for i in range(0, len(img_list_center)):
+    if float(steering_list_center[i]) < split_left:
+      #print('left: ', steering_list_center[i])
+      # Steering left: steering data < split_left
+      if found_left == 0:
+        # Include image of center camera
+        # Set image name
+        drive_data_steer_left[0][0] = img_list_center[i]
+        # Set steering angle
+        drive_data_steer_left[0][1] = steering_list_center[i]
+        found_left = 1
+      else:
+        # Set image name
+        drive_data_steer_left_app[0][0] = img_list_center[i]
+        # Set steering angle
+        drive_data_steer_left_app[0][1] = steering_list_center[i]
+        drive_data_steer_left = np.concatenate((drive_data_steer_left, drive_data_steer_left_app), axis=0)
+
+    elif float(steering_list_center[i]) > split_right:
+      #print('right: ', steering_list_center[i])
+      # Steering right: steering data > split_right
+      # Include image of center camera
+      if found_right == 0:
+        # Set image name
+        drive_data_steer_right[0][0] = img_list_center[i]
+        # Set steering angle
+        drive_data_steer_right[0][1] = steering_list_center[i]
+        found_right = 1
+      else:
+        # Set image name
+        drive_data_steer_right_app[0][0] = img_list_center[i]
+        # Set steering angle
+        drive_data_steer_right_app[0][1] = steering_list_center[i]
+        drive_data_steer_right = np.concatenate((drive_data_steer_right, drive_data_steer_right_app), axis=0)
+
+    else: 
+      # Nearly no steering: split_left <= steering data <= split_right
+      # Include image of center camera
+      #print('center: ', steering_list_center[i])
+      if found_straight == 0:
+        # Set image name
+        drive_data_straight[0][0] = img_list_center[i]
+        # Set steering angle
+        drive_data_straight[0][1] = steering_list_center[i]
+        found_straight = 1
+      else:
+        # Set image name
+        drive_data_straight_app[0][0] = img_list_center[i]
+        # Set steering angle
+        drive_data_straight_app[0][1] = steering_list_center[i]
+        drive_data_straight = np.concatenate((drive_data_straight, drive_data_straight_app), axis=0)
+
+  if print_debug == 1:
+    print()
+    print('Distribution of Data from images from the center camera (for training):')
+    print_info_data_set(steering_list_center, 1)
+    print('Original dataset only center images: ')
+    print('Steer left: ', len(drive_data_steer_left))
+    print('Steer center: ', len(drive_data_straight))
+    print('Steer right: ', len(drive_data_steer_right)) 
+    print()
+
+  # len(img_list_left) == len(img_list_right)
+  # Only len(img_list_center) is smaller, because of split for validation
+  for i in range(0, len(img_list_left)):
+    steering_offset = random.uniform(0.10,0.20)
+    #steering_offset = 0.3
     
-    row = new_size_row
-    col = new_size_col
-    ch = 3
-    print('Expected shape: ',row, col, ch)
-    model.add(Convolution2D(24, 5, 5, input_shape = (row, col, ch), subsample = (2, 2), border_mode = "valid", name = 'conv1'))
-    model.add(ELU())
-    model.add(Convolution2D(36, 5, 5, subsample = (2, 2), border_mode = "valid", name = 'conv2'))
-    model.add(ELU())
-    model.add(Convolution2D(48, 5, 5, subsample = (2, 2), border_mode = "valid", name = 'conv3'))
-    model.add(ELU())
-    model.add(Convolution2D(64, 3, 3, subsample = (1, 1), border_mode = "valid", name = 'conv4'))
-    model.add(ELU())
-    model.add(Convolution2D(64, 3, 3, subsample = (1, 1), border_mode = "valid", name = 'conv5'))
+    # Include left camera images
+    new_steering_angle_left_cam = float(steering_list_l_r[i]) + steering_offset
     
-    model.add(Flatten())
+    if new_steering_angle_left_cam < split_left:
+      # Set image name
+      drive_data_steer_left_app[0][0] = img_list_left[i]
+      # Set steering angle
+      drive_data_steer_left_app[0][1] = str(new_steering_angle_left_cam)
+      drive_data_steer_left = np.concatenate((drive_data_steer_left, drive_data_steer_left_app), axis=0)
+    elif new_steering_angle_left_cam > split_right:
+      # Set image name
+      drive_data_steer_right_app[0][0] = img_list_left[i]
+      # Set steering angle
+      drive_data_steer_right_app[0][1] = str(new_steering_angle_left_cam)
+      drive_data_steer_right = np.concatenate((drive_data_steer_right, drive_data_steer_right_app), axis=0)
+    else: 
+      # Set image name
+      drive_data_straight_app[0][0] = img_list_left[i]
+      # Set steering angle
+      drive_data_straight_app[0][1] = str(new_steering_angle_left_cam)
+      drive_data_straight = np.concatenate((drive_data_straight, drive_data_straight_app), axis=0)
 
-    model.add(Dense(1164, name = 'fc1'))
-    model.add(ELU())
-    model.add(Dropout(0.3))
+    # Include right camera images
+    new_steering_angle_right_cam = float(steering_list_l_r[i]) - steering_offset
     
-    model.add(Dense(100, name = 'fc2'))
-    model.add(ELU())
-    model.add(Dropout(0.3))
+    if new_steering_angle_right_cam < split_left:
+      # Set image name
+      drive_data_steer_left_app[0][0] = img_list_right[i]
+      # Set steering angle
+      drive_data_steer_left_app[0][1] = str(new_steering_angle_right_cam)
+      drive_data_steer_left = np.concatenate((drive_data_steer_left, drive_data_steer_left_app), axis=0)
+    elif new_steering_angle_right_cam > split_right:
+      # Set image name
+      drive_data_steer_right_app[0][0] = img_list_right[i]
+      # Set steering angle
+      drive_data_steer_right_app[0][1] = str(new_steering_angle_right_cam)
+      drive_data_steer_right = np.concatenate((drive_data_steer_right, drive_data_steer_right_app), axis=0)
+    else: 
+      # Set image name
+      drive_data_straight_app[0][0] = img_list_right[i]
+      # Set steering angle
+      drive_data_straight_app[0][1] = str(new_steering_angle_right_cam)
+      drive_data_straight = np.concatenate((drive_data_straight, drive_data_straight_app), axis=0)
 
-    model.add(Dense(50, name = 'fc3'))
-    model.add(ELU())
-    model.add(Dropout(0.3))
-    
-    model.add(Dense(10, name = 'fc4'))
-    model.add(ELU())
-    model.add(Dense(1, name = 'output'))
+  if print_debug == 1:
+    print('Distribution of Data from images from left/right camera:')
+    d_data = np.concatenate((drive_data_steer_left, drive_data_straight, drive_data_steer_right), axis=0)
+    print_info_data_set(d_data, 2)
+    print('Dataset with left, center, right camera images: ')
+    print('Steer left: ', len(drive_data_steer_left))
+    print('Steer center: ', len(drive_data_straight))
+    print('Steer right: ', len(drive_data_steer_right)) 
+    print()
+      
+  return drive_data_steer_left, drive_data_straight, drive_data_steer_right
 
-    return model
+'''
+OWN
+''' 
+def change_brightness(image):
+    # Convert from RGB to HSV to change brightness
+    image_hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    #Generate new random brightness
+    #TODO test random_brightness = random.uniform(0.25,1.25)
+    random_brightness = random.uniform(0.25,1.25)
+    image_hsv[:,:,2] = image_hsv[:,:,2] * random_brightness
+    #Convert back to RGB colorspace
+    final_image = cv2.cvtColor(image_hsv, cv2.COLOR_HSV2RGB)
+    # TODO: Test using HSV in model
+    return final_image 
 
-def generate_train_data():
-	# Generate training data
-	while 1:
-		x, y = generate_train_data_int(printinfo = 0)
-		yield x, y
+'''
+OWN
+'''
+def flip_image(image, steer):
+  flipped_image = cv2.flip(image, 1)
+  flipped_steer = -1 * steer
+  return flipped_image, flipped_steer
 
-def generate_valid_data():
-	# Generate validation data
-	# TODO: Send all data for validation
-	while 1:
-		x, y = generate_valid_data_int(printinfo = 0)
-		yield x, y
-	
-def generate_valid_data_int(printinfo):
-	# TODO: Preprocessing
-	
-	# Check if it possible to get rid of the global variables, because of bad programming style
-	global global_count_valid
-	
-	data = drive_data_valid
-	count_index = global_count_valid
-	global_count_valid += 1
-	if global_count_valid == len(drive_data_valid):
-		global_count_valid = 0
-
-	image_name = data[count_index][0]
-	image_name = image_name.strip()
-	image_path = path_of_data + '/' + image_name
-	if printinfo == 1:
-		print()
-		print('Image to generate:')
-		print(image_path)
-	x = plt.imread(image_path)
-	if data[count_index][2] == 1:
-		# Image has to be flipped
-		x = cv2.flip(x,1)
-	x = preprocessImage(x)
-	x = x.reshape(1, x.shape[0], x.shape[1], x.shape[2])
-	y = data[count_index][1]
-	y = np.array([[y]])
-	return x, y
-
-def generate_train_data_int(printinfo):
-	# TODO: Preprocessing
-	
-	# Check if it possible to get rid of the global variables, because of bad programming style
-	global global_count_left
-	global global_count_center
-	global global_count_right
-
-	# Choose randomly if an image with steering to 
-	# the left or right in the center image should be used
-	choose_data_pack = np.random.randint(0, 2)
-	
-	if choose_data_pack == 0:
-		# Choose drive_data_left
-		data = drive_data_left
-		count_index = global_count_left
-		global_count_left += 1
-		if global_count_left == len(drive_data_left):
-			global_count_left = 0
-	elif choose_data_pack == 1:
-		# Choose drive_data_center
-		data = drive_data_center
-		count_index = global_count_center
-		global_count_center += 1
-		if global_count_center == len(drive_data_center):
-			global_count_center = 0
-	else:
-		# Choose drive_data_right
-		data = drive_data_right
-		count_index = global_count_right
-		global_count_right += 1
-		if global_count_right == len(drive_data_right):
-			global_count_right = 0
-
-	image_name = data[count_index][0]
-	image_name = image_name.strip()
-	image_path = path_of_data + '/' + image_name
-	if printinfo == 1:
-		print()
-		print('Image to generate:')
-		print(image_path)
-	x = plt.imread(image_path)
-	if data[count_index][2] == 1:
-		# Image has to be flipped
-		x = cv2.flip(x,1)
-	x = preprocessImage(x)
-	x = x.reshape(1, x.shape[0], x.shape[1], x.shape[2])
-	y = data[count_index][1]
-	y = np.array([[y]])
-	return x, y
-
-def get_single_validation_data(data,number):
-	# TODO: Preprocessing
-	i = number
-	image_name = data[i][0]
-	image_name = image_name.strip()
-	image_path = path_of_data + '/' + image_name
-	print()
-	print('Single image to test:')
-	print(image_path)
-	x = plt.imread(image_path)
-	x = x.reshape(1, x.shape[0], x.shape[1], x.shape[2])
-	y = data[i][1]
-	print('Steering angle y: ', y)
-	print()
-	y = np.array([[y]])
-	return x	
+'''
+OWN
+'''
+def cut_and_resize_image(image):
+  # Cut image on top (50px) to cut the sky and bottom (20px) to cut the hood of the car
+  image_cut = image[50:140,:]
+  # Resize the image to the defined input size for the neuronal network
+  image_resized = cv2.resize(image_cut, (new_size_row,new_size_col))
+  return image_resized
 
 
-def test_train_generator():
-	x, y = generate_train_data_int(printinfo = 1)
-	print('Shape of image:')
-	print(x.shape)
-	print('Steering angle:')
-	print(y)
+'''
+OWN
+'''
+def data_generator_train(drive_data_steer_left, drive_data_straight, drive_data_steer_right, batch_size):
+    batch_train = np.zeros((batch_size, new_size_row, new_size_col, new_size_ch), dtype = np.float32)
+    batch_steer = np.zeros((batch_size,), dtype = np.float32)
+    while 1:
+        for i in range(batch_size):
+          # Choose randomly if an image with steering to 
+          # the left or right in the center image should be used
+          choose_data_pack = np.random.randint(0, 2)
 
-def test_valid_generator():
-	x, y = generate_valid_data_int(printinfo = 1)
-	print('Shape of image:')
-	print(x.shape)
-	print('Steering angle:')
-	print(y)
+          if choose_data_pack == 0:
+            # Choose drive_data_steer_left
+            data = drive_data_steer_left
+          elif choose_data_pack == 1:
+            # Choose drive_data_straight
+            data = drive_data_straight
+          else:
+            # Choose drive_data_steer_right
+            data = drive_data_steer_right
+
+          # Randomly select an image to of the choosen data_list
+          i_rand = int(np.random.choice(len(data),1))
+          image = mpimg.imread(path_of_data + data[i_rand][0].strip())
+          mod_image = change_brightness(image)
+          batch_train[i] = cut_and_resize_image(mod_image)
+          batch_steer[i] = float(data[i_rand][1]) * (1 + np.random.uniform(-0.10,0.10)) # TODO try other value
+          #batch_steer[i] = float(data[i_rand][1])
+          # Randomly flip the image vertically -> steer data has to be inverted
+          flip_images = random.randint(0,1)
+          if flip_images == 1:
+            batch_train[i], batch_steer[i] = flip_image(batch_train[i], batch_steer[i])
+
+        yield batch_train, batch_steer
 
 
-def train_model(model):
-	# trains the model
-	learning_rate = 0.0001 # Perhaps it has to be changed?
-	
-	adam_optimizer = Adam(lr = learning_rate)
-	
-	model.compile(optimizer = adam_optimizer, loss = "mse")
-
-	data_generator_valid = generate_valid_data()
-
-	data_generator_train = generate_train_data()
-
-	model_data = model.fit_generator(data_generator_train,
-            samples_per_epoch = 20000, nb_epoch = 5, validation_data = data_generator_valid,
-                        nb_val_samples = len(drive_data_valid), verbose = 1)
+'''
+OWN
+'''
+def data_generator_valid(data, steer, batch_size):
+    batch_valid = np.zeros((batch_size, new_size_row, new_size_col, new_size_ch), dtype = np.float32)
+    batch_steer = np.zeros((batch_size,), dtype = np.float32)
+    while 1:
+      for i in range(batch_size):
+        i_rand = int(np.random.choice(len(data),1))
+        image = mpimg.imread(path_of_data + data[i_rand].strip())
+        batch_valid[i] = cut_and_resize_image(image)
+        batch_steer[i] = steer[i_rand]
+      yield batch_valid, batch_steer
 
 
-	test_it = 0
-	if test_it == 1:
-		print(model_data)
-		X_validation = get_single_validation_data(drive_data_left, 0)
-		val_preds = model.predict(X_validation)
-		print('eins:',min(val_preds), max(val_preds))
-		X_validation = get_single_validation_data(drive_data_left, 1)
-		val_preds = model.predict(X_validation)
-		print('zwei:',min(val_preds), max(val_preds))
-		X_validation = get_single_validation_data(drive_data_left, 2)
-		val_preds = model.predict(X_validation)
-		print('drei:',min(val_preds), max(val_preds))
-		X_validation = get_single_validation_data(drive_data_left, 3)
-		val_preds = model.predict(X_validation)
-		print('vier:',min(val_preds), max(val_preds))
 
-	file_name_model = 'model.json'
-	file_name_weights = 'model.h5'
+'''
+  This function defines the architecture of the artificial neuronal network
+'''
+def model_nvidia_gada_2():  
+  # TODO: Check if model is okay -> Paper!!!
+  input_shape = (new_size_row, new_size_col, new_size_ch)
 
-	save_trained_model(file_name_model, file_name_weights)
+  model = Sequential()
+  
+  # Layer 1: Normalization of the input in range -1 to 1
+  model.add(Lambda(lambda x: x/127.5 - 1.0, input_shape = input_shape))
+  
+  # Layer 2: Convolution Layer with relu-activation and l2-weights-regularization
+  model.add(Convolution2D(24, 5, 5, border_mode = 'valid', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
+  
+  # Layer 3: Convolution Layer with relu-activation and l2-weights-regularization
+  model.add(Convolution2D(36, 5, 5, border_mode = 'valid', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
+  
+  # Layer 4: Convolution Layer with relu-activation and l2-weights-regularization
+  model.add(Convolution2D(48, 5, 5, border_mode = 'valid', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
+  
+  # Layer 5: Convolution Layer with relu-activation and l2-weights-regularization
+  model.add(Convolution2D(64, 3, 3, border_mode = 'same', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
+  
+  # Layer 6: Convolution Layer with relu-activation and l2-weights-regularization
+  model.add(Convolution2D(64, 3, 3, border_mode = 'valid', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
+  
+  # Layer 7: Flatten for the following fully connceted layers
+  model.add(Flatten())
+  
+  # Layer 8: Fully connected layer with size 80 and l2-weights-regularization
+  #           Dropout (0.5) to prevent overfitting
+  model.add(Dense(80, W_regularizer = l2(0.001)))
+  model.add(Dropout(0.5))
+  
+  # Layer 9: Fully connected layer with size 40 and l2-weights-regularization
+  #           Dropout (0.5) to prevent overfitting
+  model.add(Dense(40, W_regularizer = l2(0.001)))
+  model.add(Dropout(0.5))
+  
+  # Layer 10: Fully connected layer with size 16 and l2-weights-regularization
+  #           Dropout (0.5) to prevent overfitting
+  model.add(Dense(16, W_regularizer = l2(0.001)))
+  model.add(Dropout(0.5))
+  
+  # Layer 11: Fully connected layer with size 10 and l2-weights-regularization
+  #           Dropout (0.5) to prevent overfitting
+  model.add(Dense(10, W_regularizer = l2(0.001)))
+  
+  # Layer 12: Fully connected layer with size 1 (Output-Layer) and l2-weights-regularization
+  model.add(Dense(1, W_regularizer = l2(0.001)))
+  return model
 
-	valid_loss = model_data.history['val_loss'][0]
+def model_nvidia_gada_3():  
+  # TODO: Check if model is okay -> Paper!!!
+  input_shape = (new_size_row, new_size_col, new_size_ch)
 
-	print(valid_loss)
-	print()
-	print('It worked out.')
+  model = Sequential()
+  
+  # Layer 1: Normalization of the input in range -1 to 1
+  model.add(Lambda(lambda x: x/127.5 - 1.0, input_shape = input_shape))
+  
+  # Layer 2: Convolution Layer with relu-activation and l2-weights-regularization
+  model.add(Convolution2D(24, 5, 5, border_mode = 'valid', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
+  
+  # Layer 3: Convolution Layer with relu-activation and l2-weights-regularization
+  model.add(Convolution2D(36, 5, 5, border_mode = 'valid', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
+  
+  # Layer 4: Convolution Layer with relu-activation and l2-weights-regularization
+  model.add(Convolution2D(48, 5, 5, border_mode = 'valid', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
+  
+  # Layer 5: Convolution Layer with relu-activation and l2-weights-regularization
+  model.add(Convolution2D(64, 3, 3, border_mode = 'same', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
+  
+  # Layer 6: Convolution Layer with relu-activation and l2-weights-regularization
+  model.add(Convolution2D(64, 3, 3, border_mode = 'valid', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
+  
+  # Layer 7: Flatten for the following fully connceted layers
+  model.add(Flatten())
+  
+  # Layer 8: Fully connected layer with size 100 and l2-weights-regularization
+  #           Dropout (0.3) to prevent overfitting
+  model.add(Dense(100, W_regularizer = l2(0.001)))
+  model.add(Dropout(0.3))
+  
+  # Layer 9: Fully connected layer with size 50 and l2-weights-regularization
+  #           Dropout (0.3) to prevent overfitting
+  model.add(Dense(50, W_regularizer = l2(0.001)))
+  model.add(Dropout(0.3))
+  
+  # Layer 10: Fully connected layer with size 10 and l2-weights-regularization
+  #           Dropout (0.3) to prevent overfitting
+  model.add(Dense(10, W_regularizer = l2(0.001)))
+  model.add(Dropout(0.3))
+  
+  # Layer 12: Fully connected layer with size 1 (Output-Layer) and l2-weights-regularization
+  model.add(Dense(1, W_regularizer = l2(0.001)))
+  return model
 
-def preprocessImage(image):
-	# Preprocessing image files
-	shape = image.shape
-	image = image[math.floor(shape[0]/4):shape[0]-25, 0:shape[1]]
-	image = get_normalized_hsv_image(image)
-	image = cv2.resize(image,(new_size_col,new_size_row), interpolation=cv2.INTER_AREA)    
-	return image 
 
-def save_trained_model(path_model, path_weights):
+'''
+  This function trains the model of the artificial neuronal network
+  
+  INPUT:
+        model = structure of the model to train
+'''
+def train_model(model, drive_data_steer_left, drive_data_straight, drive_data_steer_right, X_valid, y_valid):
+  # trains the model
+  learning_rate = 0.0001
+
+  adam_optimizer = Adam(lr = learning_rate)
+
+  model.compile(optimizer = adam_optimizer, loss = 'mse')
+
+  generator_train = data_generator_train(drive_data_steer_left, drive_data_straight, drive_data_steer_right, batch_size)
+  generator_valid = data_generator_valid(X_valid, y_valid, batch_size)
+  count_all_images = len(drive_data_steer_left) +  len(drive_data_straight) + len(drive_data_steer_right)
+
+  num_per_epoch = ((int(count_all_images / batch_size)) + 1) * batch_size
+  
+  model_data = model.fit_generator(generator_train, samples_per_epoch = num_per_epoch, nb_epoch = number_of_epochs, validation_data = generator_valid, nb_val_samples = len(X_valid))
+
+  print('Training finished!')
+
+  file_name_model = 'model.json'
+  file_name_weights = 'model.h5'
+
+  save_trained_model(file_name_model, file_name_weights, model)
+
+  valid_loss = model_data.history['val_loss'][0]
+
+  print(valid_loss)
+
+
+'''
+  This function saves the entire model of the artificial neuronal network
+  
+  INPUT:
+        path_model = path and name of the model -> saved as *.json
+        path_weights = path and name of the weights -> saved as *.h5
+'''
+def save_trained_model(path_model, path_weights, model):
     print('Save model at:')
     print('Model: ', path_model)
     print('Weights: ', path_weights)
@@ -634,56 +512,44 @@ def save_trained_model(path_model, path_weights):
         os.remove(path_model)
     json_string = model.to_json()
     with open(path_model,'w' ) as file:
-        json.dump(json_string, file)
+        file.write(json_string)
     if Path(path_weights).is_file():
         os.remove(path_weights)
     model.save_weights(path_weights)
 
-# Configuration area
-debug_image_data = 0
-debug_train_generator = 1
-debug_valid_generator = 0
-do_training = 1
+    print('Model architecture and weights saved!')
 
 
-path_of_data = './session_data'
+'''
+  Main function
+'''
+def main():
+  # Configuration area
+  do_training = 0
+  print_debug = 1
 
-drive_data_relevant = load_data_info(path_of_data)
-drive_data_left, drive_data_center, drive_data_right, drive_data_valid = modify_data_info(drive_data_relevant)
+  # New Data Collection
+  drive_data = load_data_info(path_of_data)
+  
+  if print_debug == 1:
+    print_info_data_set(drive_data, 0)
+  
+  center_img, left_img, right_img, steer_angle_center, steer_angle_l_r = split_data_info(drive_data)
+  center_img, X_valid, steer_angle_center, y_valid = split_train_valid(center_img, steer_angle_center)
 
-print()
-print('Left: ', len(drive_data_left))
-print('Center: ', len(drive_data_center))
-print('Right: ', len(drive_data_right))
-print('Valid: ', len(drive_data_valid))
-print()
+  drive_data_steer_left, drive_data_straight, drive_data_steer_right = split_data_left_straight_right(center_img, steer_angle_center, left_img, right_img, steer_angle_l_r)
 
-# Only for testing 
-if debug_image_data == 1:
-	image_index = 2
-	print_image_data(drive_data_center, image_index)
-	print()
+  if do_training == 1:
+    # model = model_nvidia_gada_2()
+    model = model_nvidia_gada_3()
+    print(model.summary())
+    print()
 
-if debug_train_generator == 1:
-	print()
-	print('Test train generator')
-	test_train_generator()
-	print()
+    # Train the model
+    train_model(model, drive_data_steer_left, drive_data_straight, drive_data_steer_right, X_valid, y_valid)
 
-if debug_valid_generator == 1:
-	print()
-	print('Test valid generator')
-	test_valid_generator()
-	print()
+  print()
+  print('Everything done!!!')
 
-if do_training == 1:
-	#model = model_test()
-	model = model_nvidia_gada()
-	print(model.summary())
-	print()
-
-	# Train the model
-	train_model(model)
-
-print()
-print('done!!!')
+if __name__ == "__main__":
+    main()
