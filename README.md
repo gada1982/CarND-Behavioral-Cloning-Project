@@ -1,7 +1,16 @@
-# CarND-Behavioral-Cloning-Project
-This project is done as a part of the Nanodegree - *Self-Driving Car Engineer* provided from Udacity. The outcome of the projct is, that a system with an artificial neuronal network is able to learn driving a track successfully by only getting human driving behaviour as input. Images from cameras at the front (left/center/right) and steering angles are the input values. Collection of training data and testing is done within a simulator, which is provided by Udacity.
+# Introduction
+This project is done as a part of the Nanodegree - *Self-Driving Car Engineer* provided from Udacity. The outcome of the projct is, that a system with an artificial neuronal network is able to learn driving a track successfully by only getting human driving behaviour as input. And not only the track it has observed, it has to gerneralize to other tracks too. Images from cameras at the front (left/center/right) and steering angles are taken as input values. Collection of training data and testing is done within a simulator, which is provided by Udacity.
 
-## Requirements
+# Outline
+1. Requirements
+2. Files
+3. Data Collection
+4. Data Processing
+5. Model Training
+6. Model Testing
+7. Conclusion
+
+# 1. Requirements
 - Python 3.5
 - Environment [CarND-Term1-Starter-Kit](https://github.com/udacity/CarND-Term1-Starter-Kit/blob/master/README.md) provided by Udacity
 - Car Simulator provided by Udacity
@@ -12,106 +21,73 @@ This project is done as a part of the Nanodegree - *Self-Driving Car Engineer* p
 - [Sample data] (https://d17h27t6h515a5.cloudfront.net/topher/2016/December/584f6edd_data/data.zip) provided from Udacity
   - if you don't want to collect own training data with the simulator
 
-## Files
+# 2. Files
 - model.py - The script used to create and train the model.
 - drive.py - The script to drive the car. 
 - model.json - The model architecture.
 - model.h5 - The model weights.
 - README.md - explains the structure of your network and training approach. 
 
-## Usage of the simulator
-(Text is mostly taken from Udacity-Source)
-Once you’ve downloaded the simulator (see chapter Requirements), extract it and run it.
+# 3. Data Collection
 
-When you first run the simulator, you’ll see a configuration screen asking what size and graphical quality you would like. We suggest running at the smallest size and the fastest graphical quality. We also suggest closing most other applications (especially graphically intensive applications) on your computer, so that your machine can devote its resource to running the simulator.
+### 3.1 Using the Simulator
+The simulator can be used for data collection. The **Training Mode** is used for human driving and collecting and storing data. The ** Autonomous Mode** is used for testing the trained model. Both modes are available for both tracks.
 
-The next screen gives you two options: Training Mode and Autonomous Mode.
+TODO: Include image of the simulator
 
-### Training mode
-You’ll enter the simulator and be able to drive the car with your arrow keys, just like it’s a video game.
+The simulator delivers and stores images of  left / center / right camera mounted at the front-window of the car. In the dataset (.csv) the following data is stored. 
+* Links to stored images of the three cameras
+* Steering-data
+* Throttle-data
+* Brake-data
+* Speed-data
 
-### Autonomous mode
-Autonomous mode will be used in a later step once the neural network is trained.
+At the moment only images and steering-data are for training the model.
 
-### Collection data
-If you want to collect own training data -> use training mode of the simulator.
+### 3.1 Using Data from Udacity
+While collecting good training data is rather difficult, especially when using keyboard input to steer the car, Udacity provided a basis dataset (see chapter Requirements).
 
-- Enter Training Mode in the simulator.
-- Start driving the car to get a feel for the controls.
-- When you are ready, hit the record button in the top right to start recording.
-- Continue driving for a few laps or till you feel like you have enough data.
-- Hit the record button in the top right again to stop recording.
+This data is not distributed very evenly over the possible steering angles (-1 to 1). Most of the data was for straight driving. When training artificial neuronal networks a balanced dataset is really important. If not, the final model gets biased to this uneven distribution.
 
-How the data is stored will be explained later-on.
+TODO Bild einfügen
 
-## Project Requirements
-The simulator provides two tracks (in both modes). The simplier one (on the left) is called Track 1, the heavier one (in the mountains on the right) is called Track 2.
+Finally it wasn't necessary to use own collected data to train the model. The sample data with lots of data processing did the job.
 
-Within the project Deep Learning is used. Training only happens with data from Track 1. 
+# 4. Data Processing
+The input data (sample data or own collected data) is shuffled and split up in training data and validation data. TODO 15% of the data is used for validation. The validation data is **never** used for training. No own testing data is split up, because during development I found out that only testing in the simulator can give a reliable feedback if the final model works in a proper way.
 
-In the final solution the car has to successfully drive autonomously and without getting off the road on Track 1. Track 2 is only for self evaluation.
-
-## Approach while Development
-A good starting point for the project has been a [paper](http://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf) from NVIDIA. Finally the CNN, which has been used in this project is strongly influenced by the model mentioned in this paper.
-
-At the beginning I tried to collect own training data with the simulator. Using a keyboard produces mostly data with steering angle zero and the driving was not really smooth. Because of this I decided to start with the sample data (see chapter Requirements).
-
-### Data is the key
-While training an artificial neuronal network *Garbage in - Garbage out* really matters. Understanding the data and getting the balanced dataset are the key figures.
-
-The simulator delivers images of  left / center / right camera mounted at the front-window of the car.
-In the dataset the following data is stored (additional to the images).
-center_image, left_image, right_image, steering-data, throttle-data, brake-data, speed-data
-This data is stored in an .csv-file.
-Only center_image, left_image, right_image and steering-data are used.
-
-#### Training, Validation and Testing data
-The input data (sample data or own collected data) is shuffled and split up in training data and validation data. 15% of the data is used for validation. The validation data is NOT used for training at all.
-No own testing data is split up because during development I found out that only testing in the simulator can give a reliable feedback if the final model works in a proper way.
-
-#### Distribution of the training data
-
-#### Modification of the training data
-Because of bad distribution within the training data the following tasks are made.
-- Useage of images from left-camera and right camera
-  - Steering angle correction of +/- 0.25
+Because the uneven distribution within the training data and to make the model able to generalize to other conditions and traks, the following steps have been done:
+- Usage of images from left camera and right camera
+  - Steering angle correction of +/- 0.25 TODO
   - This amount was found out experimentally, in a real world example this can be calculated out of the geometry
+  - This is mostly necessary for recovery (when the car intends to leave the track)
 - Flip images (vertical axis)
-  - left-camera-image -> right-camera-image (with inverse steering angle)
-  - right-camera-image -> left-camera-image (with inverse steering angle)
+  - Inverse steering angle
 - Randomly adjustment of brightness
-  - to avoid the model from getting biasd to lighter or darker conditions
+  - To avoid the model from getting biasd to lighter or darker conditions
 - Change from RGB to HSV Color-Space
+  - TODO ???
   
-To avoid getting biasd to drive straight the data has been split up in three groups.
+To avoid getting biasd to drive straight the data has been split up in three groups. TODO Values?
 - Steer left ( x < -0.10 )
 - No steering ( -0.10 <= x <= 0.1 )
 - Steer right ( x < 0.10 )
 
-Out of the groups the data is randomly selected while generating the training batch (by using fit_generator)
+Out of theese groups the data has been randomly selected, while generating the training batch (by using fit_generator)
 
-## Normalization
-Normalize the values (between -1 to 1). Normalisation of images doesn't change the content of the images, but it makes it much easier for the optimization to proceed numerical and the variables should always have zero mean, if possible. This is done within the model.
+The model should only learn "reading" the track and shouldn't be influence by the hood of the car or the sky. Because of this, the images (160x320) are cut by TODO XXpx on top and XXpx on the bottom. This gives an image size of XXx320.
+The images size could be shrinked from XXx320 to 64x64  without big disadvantages. 
 
-## Preprocess images
-The model should only learn "reading" the track and shouldn't be influence by the hood of the car or the sky. Because of this, the images (160x320) are taken cut by TODO XXpx on top and XXpx on the bottom. This gives an image size of XXx320.
-After the lot of test I found out that the image size can by shrinked without big disadvantages. So the images are shrinked from XXx320 to 64x64 before feeding into the model. Furthermore images are changed from RGB to HSV Color-Space because this gave better results.
-IMPORTANT: Preprocessing has to be done with training and testing data. This preprocessing has to be included into drive.py too.
+Testing data (in the simulator) had to be adjusted to the same size and color-space. This preprocessing has been included into drive.py.
 
-## Generation of training and validation data
-The model for the artificial neuronal network is trained with [Keras](https://keras.io/) and a Tensorflow backend. In this project lots of data is needed. Because of this, it is not useful to keep the hole data in memory, as this was done in the last project. To get training and validation data fit_generator is used.
-Additionally random data augmentation is included in the data-generators.
+# 5. Model Training
+The [paper](http://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf) from NVIDIA has strongly influenced the model, which was finally used for this project. 
 
-Two different generators are used. One for training data and one for validation data.
-- Training generator
-TODO
+The following picture is taken out of this paper.
 
-- Validation generator
-TODO
+![Architecture NVIDIA](./info_for_readme/architecture_nvidia.png)
 
-# Model / Architecture
-As mentioned above the [paper](http://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf) from NVIDIA has strongly influenced the model which was finally used for this project.
-
+**The final architecture:**
 - Layer 1: Normalization of the input 
   - Input size: 64x64x3
   - Normalize the images within the range -1 to 1
@@ -169,12 +145,24 @@ As mentioned above the [paper](http://images.nvidia.com/content/tegra/automotive
 
 To avoid overfitting, 30% Dropout is used for all fully connected layers, except the last one, which is the output layer. L2 weight regularization applied to every layer. This helpful for getting a smoother driving, which is less snappy. 
 
+Normalisation of images doesn't change the content of the images, but it makes it much easier for the optimization to proceed numerical and the variables should always have zero mean, if possible. This is done within the model.
+
 For this model / project an Adam optimizer seems to be the best solution. To avoid jumping around a rather small learning rate (0.0001) has been used.
 
-TODO include images from paper.
+The model for the artificial neuronal network is trained with [Keras](https://keras.io/) and a Tensorflow backend. In this project lots of data is needed. Because of this, it is not useful to keep the hole data in memory. To get training and validation data fit_generator is used. Additionally random data augmentation is included into the data-generators.
 
+The model was trained for 20 epochs with 24x TODO samples per epoch.
 
+# 6. Model Testing
+For testing track 1 (within the simulator) has been used. This was successful, because the car was able to pass the track in a smooth way, without hitting any track limits.
 
-  
+TODO: Add track video
 
- 
+To show that the model generalizes to different tracks or conditions the second track (within the simulator) has been used. The model has **never** been trained on track 2. Anyway the car passes the track sucessfully.
+
+TODO: Really? Add track video
+
+# 7. Conclusion
+The model, which was an adaption of the NVDIA-model, could clone the human driving behaviour and was able to generalize to tracks it has never seen while training. At the moment the model only can control the steering angle of the car. Trottle and brake, data could be used for further work.
+
+While training an artificial neuronal network *Garbage in - Garbage out* really matters. Understanding the data and getting the balanced dataset are the key figures.
