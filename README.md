@@ -33,7 +33,7 @@ This project is done as a part of the Nanodegree - *Self-Driving Car Engineer* p
 ### 3.1 Using the Simulator
 The simulator can be used for data collection. The **Training Mode** is used for human driving and collecting and storing data. The ** Autonomous Mode** is used for testing the trained model. Both modes are available for both tracks.
 
-TODO: Include image of the simulator
+![Simulator](./info_for_readme/simulator.png)
 
 The simulator delivers and stores images of  left / center / right camera mounted at the front-window of the car. In the dataset (.csv) the following data is stored. 
 * Links to stored images of the three cameras
