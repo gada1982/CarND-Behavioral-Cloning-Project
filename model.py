@@ -16,11 +16,11 @@ from sklearn.model_selection import train_test_split
 import matplotlib.image as mpimg
 
 # Imports for keras
-#from keras.models import Sequential, Model
-#from keras.layers import Convolution2D, Flatten, Lambda
-#from keras.layers.core import Dense, Dropout, Activation
-#from keras.optimizers import Adam
-#from keras.regularizers import l2
+from keras.models import Sequential, Model
+from keras.layers import Convolution2D, Flatten, Lambda
+from keras.layers.core import Dense, Dropout, Activation
+from keras.optimizers import Adam
+from keras.regularizers import l2
 
 # Import json to save the model
 import json
@@ -512,20 +512,19 @@ def save_trained_model(path_model, path_weights, model):
         os.remove(path_model)
     json_string = model.to_json()
     with open(path_model,'w' ) as file:
-        file.write(json_string)
+        json.dump(json_string, file)
     if Path(path_weights).is_file():
         os.remove(path_weights)
     model.save_weights(path_weights)
 
     print('Model architecture and weights saved!')
 
-
 '''
   Main function
 '''
 def main():
   # Configuration area
-  do_training = 0
+  do_training = 1
   print_debug = 1
 
   # New Data Collection

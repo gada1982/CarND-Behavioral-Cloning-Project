@@ -39,7 +39,7 @@ def telemetry(sid, data):
     imgString = data["image"]
     image = Image.open(BytesIO(base64.b64decode(imgString)))
     image_pre = np.asarray(image)
-    image_array = preprocessImage(image_pre)
+    image_array = cut_and_resize_image(image_pre)
     transformed_image_array = image_array[None, :, :, :]
     # This model currently assumes that the features of the model are just the images. Feel free to change this.
     steering_angle = float(model.predict(transformed_image_array, batch_size=1))
@@ -49,21 +49,16 @@ def telemetry(sid, data):
     print(steering_angle, throttle)
     send_control(steering_angle, throttle)
 
-def preprocessImage(image):
-	# Preprocessing image files
-    new_size_row = 64
-    new_size_col = 94
-    shape = image.shape
-    image = image[math.floor(shape[0]/4):shape[0]-25, 0:shape[1]]
-    image = get_normalized_hsv_image(image)
-    image = cv2.resize(image,(new_size_col,new_size_row), interpolation=cv2.INTER_AREA)    
-    return image 
+def cut_and_resize_image(image):
+  # Cut image on top (50px) to cut the sky and bottom (20px) to cut the hood of the car
+  image_cut = image[50:140,:]
+  # Resize the image to the defined input size for the neuronal network
+  image_resized = cv2.resize(image_cut, (new_size_row,new_size_col))
+  return image_resized
 
-def get_normalized_hsv_image(image):
+def get_hsv_image(image):
     # Change color-space from RGB to HSV
     image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-    # Normalize from -1 to 1 (zero mean)
-    image = image / 127.5 - 1
     return image
 
 @sio.on('connect')
