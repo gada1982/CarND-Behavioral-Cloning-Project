@@ -113,38 +113,61 @@ TODO
 As mentioned above the [paper](http://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf) from NVIDIA has strongly influenced the model which was finally used for this project.
 
 - Layer 1: Normalization of the input 
+  - Input size: 64x64x3
   - Normalize the images within the range -1 to 1
-    - This could be done outside the model too (while preprocessing), but including this into the model is much smarter.
 - Layer 2: Convolution Layer
+  - Number filters: 24
   - Filter Size: 5x5
+  - Stride: 2x2
+  - Mode: valid
+  - L2 Regularization: 0.001
+  - Activation: ReLu
 - Layer 3: Convolution Layer 
+  - Number filters: 36
   - Filter Size: 5x5
+  - Stride: 2x2
+  - Mode: valid
+  - L2 Regularization: 0.001
+  - Activation: ReLu
 - Layer 4: Convolution Layer 
+  - Number filters: 48
   - Filter Size: 5x5
+  - Stride: 2x2
+  - Mode: valid
+  - L2 Regularization: 0.001
+  - Activation: ReLu
 - Layer 5: Convolution Layer 
+  - Number filters: 64
   - Filter Size: 3x3
+  - Stride: 2x2
+  - Mode: same
+  - L2 Regularization: 0.001
+  - Activation: ReLu
 - Layer 6: Convolution Layer 
+  - Number filters: 64
   - Filter Size: 3x3
+  - Stride: 2x2
+  - Mode: valid
+  - L2 Regularization: 0.001
+  - Activation: ReLu
 - Layer 7: Flatten
 - Layer 8: Fully Connected Layer
-  - Size: 80
+  - Size: 100
   - L2 Regularization: 0.001
-  - Dropout: 0.5
+  - Dropout: 0.3
 - Layer 9: Fully Connected Layer
-  - Size: 40
+  - Size: 50
   - L2 Regularization: 0.001
-  - Dropout: 0.5
+  - Dropout: 0.3
 - Layer 10: Fully Connected Layer
-  - Size: 16
-  - L2 Regularization: 0.001
-- Layer 11: Fully Connected Layer
   - Size: 10
   - L2 Regularization: 0.001
+  - Dropout: 0.3
 - Layer 12: Fully Connected Layer - Output Layer
   - Size: 1
   - L2 Regularization: 0.001
 
-To avoid overfitting, 50% Dropout is used for the first two (TODO) fully connected layers. L2 weight regularization is in every layer for getting a better driving, which is less snappy. 
+To avoid overfitting, 30% Dropout is used for all fully connected layers, except the last one, which is the output layer. L2 weight regularization applied to every layer. This helpful for getting a smoother driving, which is less snappy. 
 
 For this model / project an Adam optimizer seems to be the best solution. To avoid jumping around a rather small learning rate (0.0001) has been used.
 
