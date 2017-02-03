@@ -40,28 +40,32 @@ def telemetry(sid, data):
     image = Image.open(BytesIO(base64.b64decode(imgString)))
     image_pre = np.asarray(image)
     image_array = cut_and_resize_image(image_pre)
+    #image_array = change_to_hsv(image_mod)
     transformed_image_array = image_array[None, :, :, :]
     # This model currently assumes that the features of the model are just the images. Feel free to change this.
     steering_angle = float(model.predict(transformed_image_array, batch_size=1))
     # The driving model currently just outputs a constant throttle. Feel free to edit this.
     # Originally it was 0.2 -> modified to go better up the hill
-    throttle = 0.25
-    print(steering_angle, throttle)
+    if float(speed) > 20:
+        throttle = 0.15
+    else:
+        throttle = 0.27
+    print('Steer angle: %2.3f, Trottle: %2.3f, Speed: %2.3f' % (float(steering_angle), float(throttle), float(speed)))
     send_control(steering_angle, throttle)
 
 def cut_and_resize_image(image):
   new_size_row = 64
   new_size_col = 64
   # Cut image on top (50px) to cut the sky and bottom (20px) to cut the hood of the car
-  image_cut = image[50:140,:]
+  image_cut = image[20:140,40:280]
   # Resize the image to the defined input size for the neuronal network
   image_resized = cv2.resize(image_cut, (new_size_row,new_size_col))
   return image_resized
 
-def get_hsv_image(image):
-    # Change color-space from RGB to HSV
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-    return image
+def change_to_hsv(image):
+    # Convert from RGB to HSV to change brightness
+    image_hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    return image_hsv 
 
 @sio.on('connect')
 def connect(sid, environ):

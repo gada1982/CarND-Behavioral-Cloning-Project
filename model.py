@@ -1,6 +1,7 @@
-# Model for driving a car 
+# Project for Self-Driving Car Engineer provided from Udacity
+# Model for cloning human driving behaviour
 # Author: gada1982
-# mail: daniel@gattringer.biz
+# Mail: daniel@gattringer.biz
 
 # General imports
 import os
@@ -37,7 +38,11 @@ path_of_data = './data_udacity/'
 
 
 '''
-OWN
+This function loads the driving data out of a *.csv-file
+INPUT:
+        path = path of the data-file
+RETURN:
+        drive_data_relevant = extracted data
 '''
 def load_data_info(path):
   if not os.path.exists(path_of_data):
@@ -59,8 +64,17 @@ def load_data_info(path):
 
   return drive_data_relevant
 
+
 '''
-OWN
+This function splits the driving data into better useable parts
+INPUT:
+        drive_data = raw driving data
+RETURN:
+        center_img = links to images taken from the center camera
+        left_img = links to images taken from the left camera
+        right_img = links to images taken from the right camera
+        steer_angle_center = steering angles connected to center camera
+        steer_angle_l_r = steering angles connected to left and right camera
 '''
 def split_data_info(drive_data):
   center_img = []
@@ -69,6 +83,7 @@ def split_data_info(drive_data):
   steer_angle_center = []
   steer_angle_l_r = []
 
+  # Do split up
   for i in range(0, len(drive_data)):
     center_img.append(drive_data[i][0])
     left_img.append(drive_data[i][1])
@@ -78,12 +93,24 @@ def split_data_info(drive_data):
 
   return center_img, left_img, right_img, steer_angle_center, steer_angle_l_r
 
+
 '''
-OWN
+This function splits up the images from center camera (training and validation)
+Images from the left and right camera are only used for training and not for validation
+INPUT:
+        center_img = links to images taken from the center camera
+        steer_angle_center = steering angles connected to center camera
+RETURN:
+        center_img = links to images taken from the center camera (for training)
+        steer_angle_center = steering angles connected to center camera (for training)
+        X_valid = links to images taken from the center camera (for validation)
+        y_valid = steering angles connected to center camera (for validation)         
 '''
 def split_train_valid(center_img, steer_angle_center):
   # TODO Comment, set to 20% ?
+  # Shuffle the data before split up
   center_img, steer_angle_center = shuffle(center_img, steer_angle_center)
+  # Split training and validation data
   center_img, X_valid, steer_angle_center, y_valid = train_test_split(center_img, steer_angle_center, test_size = 0.10, random_state = 42) 
   print()
   print('Number of images for validation: ', len(X_valid))
@@ -91,14 +118,21 @@ def split_train_valid(center_img, steer_angle_center):
 
   return center_img, X_valid, steer_angle_center, y_valid
 
+
 '''
-OWN
+This function prints out some information about the dataset
+INPUT:
+        data = dataset for which information should be printed
+RETURN:
+        type = gives information about which of the different input types should be processed
 '''
 def print_info_data_set(data, type):
   class_info = [0, 0 ,0, 0, 0 ,0, 0, 0 ,0, 0, 0]
 
   # Total number of entries
   print('Total number: ', len(data))
+  
+  # Count how often different groups of steering angles appear
   for i in range(0, len(data)):
     if type == 0:
       value = float(data[i][3])
@@ -129,11 +163,51 @@ def print_info_data_set(data, type):
     else:
       class_info[10] += 1
 
+  # Print class information
   print('Class distribution: ', class_info)
 
+# TODO
+def get_fact(steer):
+  value = float(steer)
+  if value < -0.9:
+    fact = 20
+  elif value < -0.7:
+    fact = 15
+  elif value < -0.5:
+    fact = 8
+  elif value < -0.3:
+    fact = 3
+  elif value < -0.1:
+    fact = 1
+  elif value <= 0.1:
+    fact = 1
+  elif value <= 0.3:
+    fact = 1
+  elif value <= 0.5:
+    fact = 3
+  elif value <= 0.7:
+    fact = 8
+  elif value <= 0.9:
+    fact = 15
+  else:
+    fact = 20
+
+  return fact
 
 '''
-OWN
+This function splits up the driving data in lists for steering left, not steering (straight) and steering right.
+This is necessary to get rid of the uneven distribution in the provided data. Mostly straight driving.
+Lateron randomly chosen between this three groups
+INPUT:
+        img_list_center = links to images taken from the center camera
+        img_list_left = links to images taken from the left camera
+        img_list_right = links to images taken from the right camera
+        steering_list_center = steering angles connected to center camera
+        steering_list_l_r = steering angles connected to left and right camera
+RETURN:
+        drive_data_steer_left = data when car is steering to the left
+        drive_data_straight = data when car is not steering (straight)
+        drive_data_steer_right  = data when car is steering to the right
 '''
 def split_data_left_straight_right(img_list_center, steering_list_center, img_list_left, img_list_right, steering_list_l_r):
   w = 2
@@ -145,9 +219,11 @@ def split_data_left_straight_right(img_list_center, steering_list_center, img_li
   drive_data_straight_app = [[0 for x in range(w)] for y in range(1)]
   drive_data_steer_right_app = [[0 for x in range(w)] for y in range(1)]
   
+  # Necessary because of a lack in programming -> Try to get rid of it
   found_left = 0
   found_straight = 0
   found_right = 0
+  
   split_left = -0.15 #TODO try different value
   split_right = -1 * split_left
 
@@ -166,8 +242,11 @@ def split_data_left_straight_right(img_list_center, steering_list_center, img_li
         # Set image name
         drive_data_steer_left_app[0][0] = img_list_center[i]
         # Set steering angle
-        drive_data_steer_left_app[0][1] = steering_list_center[i]
-        drive_data_steer_left = np.concatenate((drive_data_steer_left, drive_data_steer_left_app), axis=0)
+        drive_data_steer_left_app[0][1] = steering_list_center[i]      
+        x = 0
+        while x < get_fact(steering_list_center[i]):
+          drive_data_steer_left = np.concatenate((drive_data_steer_left, drive_data_steer_left_app), axis=0)
+          x += 1
 
     elif float(steering_list_center[i]) > split_right:
       #print('right: ', steering_list_center[i])
@@ -184,7 +263,10 @@ def split_data_left_straight_right(img_list_center, steering_list_center, img_li
         drive_data_steer_right_app[0][0] = img_list_center[i]
         # Set steering angle
         drive_data_steer_right_app[0][1] = steering_list_center[i]
-        drive_data_steer_right = np.concatenate((drive_data_steer_right, drive_data_steer_right_app), axis=0)
+        x = 0
+        while x < get_fact(steering_list_center[i]):
+          drive_data_steer_right = np.concatenate((drive_data_steer_right, drive_data_steer_right_app), axis=0)
+          x += 1
 
     else: 
       # Nearly no steering: split_left <= steering data <= split_right
@@ -201,12 +283,16 @@ def split_data_left_straight_right(img_list_center, steering_list_center, img_li
         drive_data_straight_app[0][0] = img_list_center[i]
         # Set steering angle
         drive_data_straight_app[0][1] = steering_list_center[i]
-        drive_data_straight = np.concatenate((drive_data_straight, drive_data_straight_app), axis=0)
+        x = 0
+        while x < get_fact(steering_list_center[i]):
+          drive_data_straight = np.concatenate((drive_data_straight, drive_data_straight_app), axis=0)
+          x += 1
 
   if print_debug == 1:
     print()
     print('Distribution of Data from images from the center camera (for training):')
-    print_info_data_set(steering_list_center, 1)
+    d_data = np.concatenate((drive_data_steer_left, drive_data_straight, drive_data_steer_right), axis=0)
+    print_info_data_set(d_data, 2)
     print('Original dataset only center images: ')
     print('Steer left: ', len(drive_data_steer_left))
     print('Steer center: ', len(drive_data_straight))
@@ -216,8 +302,8 @@ def split_data_left_straight_right(img_list_center, steering_list_center, img_li
   # len(img_list_left) == len(img_list_right)
   # Only len(img_list_center) is smaller, because of split for validation
   for i in range(0, len(img_list_left)):
-    steering_offset = random.uniform(0.10,0.20)
-    #steering_offset = 0.3
+    #steering_offset = random.uniform(0.10,0.20)
+    steering_offset = 0.25
     
     # Include left camera images
     new_steering_angle_left_cam = float(steering_list_l_r[i]) + steering_offset
@@ -227,19 +313,28 @@ def split_data_left_straight_right(img_list_center, steering_list_center, img_li
       drive_data_steer_left_app[0][0] = img_list_left[i]
       # Set steering angle
       drive_data_steer_left_app[0][1] = str(new_steering_angle_left_cam)
-      drive_data_steer_left = np.concatenate((drive_data_steer_left, drive_data_steer_left_app), axis=0)
+      x = 0
+      while x < get_fact(new_steering_angle_left_cam):
+        drive_data_steer_left = np.concatenate((drive_data_steer_left, drive_data_steer_left_app), axis=0)
+        x +=1
     elif new_steering_angle_left_cam > split_right:
       # Set image name
       drive_data_steer_right_app[0][0] = img_list_left[i]
       # Set steering angle
       drive_data_steer_right_app[0][1] = str(new_steering_angle_left_cam)
-      drive_data_steer_right = np.concatenate((drive_data_steer_right, drive_data_steer_right_app), axis=0)
+      x = 0
+      while x < get_fact(new_steering_angle_left_cam):
+        drive_data_steer_right = np.concatenate((drive_data_steer_right, drive_data_steer_right_app), axis=0)
+        x += 1
     else: 
       # Set image name
       drive_data_straight_app[0][0] = img_list_left[i]
       # Set steering angle
       drive_data_straight_app[0][1] = str(new_steering_angle_left_cam)
-      drive_data_straight = np.concatenate((drive_data_straight, drive_data_straight_app), axis=0)
+      x = 0
+      while x < get_fact(new_steering_angle_left_cam):
+        drive_data_straight = np.concatenate((drive_data_straight, drive_data_straight_app), axis=0)
+        x += 1
 
     # Include right camera images
     new_steering_angle_right_cam = float(steering_list_l_r[i]) - steering_offset
@@ -249,19 +344,28 @@ def split_data_left_straight_right(img_list_center, steering_list_center, img_li
       drive_data_steer_left_app[0][0] = img_list_right[i]
       # Set steering angle
       drive_data_steer_left_app[0][1] = str(new_steering_angle_right_cam)
-      drive_data_steer_left = np.concatenate((drive_data_steer_left, drive_data_steer_left_app), axis=0)
+      x = 0
+      while x < get_fact(new_steering_angle_right_cam):
+        drive_data_steer_left = np.concatenate((drive_data_steer_left, drive_data_steer_left_app), axis=0)
+        x += 1
     elif new_steering_angle_right_cam > split_right:
       # Set image name
       drive_data_steer_right_app[0][0] = img_list_right[i]
       # Set steering angle
       drive_data_steer_right_app[0][1] = str(new_steering_angle_right_cam)
-      drive_data_steer_right = np.concatenate((drive_data_steer_right, drive_data_steer_right_app), axis=0)
+      x = 0
+      while x < get_fact(new_steering_angle_right_cam):
+        drive_data_steer_right = np.concatenate((drive_data_steer_right, drive_data_steer_right_app), axis=0)
+        x += 1
     else: 
       # Set image name
       drive_data_straight_app[0][0] = img_list_right[i]
       # Set steering angle
       drive_data_straight_app[0][1] = str(new_steering_angle_right_cam)
-      drive_data_straight = np.concatenate((drive_data_straight, drive_data_straight_app), axis=0)
+      x = 0
+      while x < get_fact(new_steering_angle_right_cam):
+        drive_data_straight = np.concatenate((drive_data_straight, drive_data_straight_app), axis=0)
+        x += 1
 
   if print_debug == 1:
     print('Distribution of Data from images from left/right camera:')
@@ -276,8 +380,12 @@ def split_data_left_straight_right(img_list_center, steering_list_center, img_li
   return drive_data_steer_left, drive_data_straight, drive_data_steer_right
 
 '''
-OWN
-''' 
+This function changes the brightness of an image randomly.
+INPUT:
+        image = image, which brightness should be changed
+RETURN:
+        final_image = image, which brightness has been changed
+'''
 def change_brightness(image):
     # Convert from RGB to HSV to change brightness
     image_hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
@@ -287,30 +395,85 @@ def change_brightness(image):
     image_hsv[:,:,2] = image_hsv[:,:,2] * random_brightness
     #Convert back to RGB colorspace
     final_image = cv2.cvtColor(image_hsv, cv2.COLOR_HSV2RGB)
-    # TODO: Test using HSV in model
     return final_image 
 
 '''
-OWN
+This function changes the color space from an image (RGB to HSV)
+INPUT:
+        image = image, which color space should be changed
+RETURN:
+        image_hsv = image, which color space has been changed
+'''
+def change_to_hsv(image):
+    # Convert from RGB to HSV to change brightness
+    image_hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    return image_hsv 
+
+'''
+This function flips an image vertically and adjusts it steering angle (inverse)
+INPUT:
+        image = image, which should be flipped
+        steer = steering data to inverse
+RETURN:
+        flipped_image = image, which has been flipped
+        flipped_steer = inversed steering data 
 '''
 def flip_image(image, steer):
   flipped_image = cv2.flip(image, 1)
   flipped_steer = -1 * steer
   return flipped_image, flipped_steer
 
+
 '''
-OWN
+This function does affine transformation an image. Shrinks horicontally and adjusts it steering angle
+INPUT:
+        image = image, which should be transformed
+        steer = steering data adjusted
+RETURN:
+        image_trans = image, which has been transformed
+        steer_trans = adjusted steering data 
+'''
+def affi_trans_image(image,steer):
+  
+  row, col, ch = image.shape
+  
+  # Apply horizontal translation with steering compensation
+  trans_hor = 50 * np.random.uniform() - 25
+  steer_trans = float(steer) + trans_hor / 125
+  
+  # Set up transformation matrix and apply
+  trans_matrix = np.float32([[1,0,trans_hor],[0,1,0]])
+  image_trans = cv2.warpAffine(image,trans_matrix,(col,row))
+  
+  return image_trans, steer_trans
+
+
+'''
+This function cut and resizes an image
+INPUT:
+        image = image, which sould be cut and resized
+RETURN:
+        image_resized = image, which has been cut and resized
 '''
 def cut_and_resize_image(image):
-  # Cut image on top (50px) to cut the sky and bottom (20px) to cut the hood of the car
-  image_cut = image[50:140,:]
+  # Cut image on top (20px) to cut the sky and bottom (20px) to cut the hood of the car
+  # Cut image on (40px) left and right
+  image_cut = image[20:140,40:280]
   # Resize the image to the defined input size for the neuronal network
   image_resized = cv2.resize(image_cut, (new_size_row,new_size_col))
   return image_resized
 
 
 '''
-OWN
+This function generates batches of training data
+INPUT:
+        drive_data_steer_left = data with steering left
+        drive_data_straight = data with nearly no steering (straigt)
+        drive_data_steer_right = data with steering right
+        batch_size = defines how many tuples should be given
+RETURN:
+        batch_train = yields the batches with images
+        batch_steer = yields the batches with steering data
 '''
 def data_generator_train(drive_data_steer_left, drive_data_straight, drive_data_steer_right, batch_size):
     batch_train = np.zeros((batch_size, new_size_row, new_size_col, new_size_ch), dtype = np.float32)
@@ -333,11 +496,25 @@ def data_generator_train(drive_data_steer_left, drive_data_straight, drive_data_
 
           # Randomly select an image to of the choosen data_list
           i_rand = int(np.random.choice(len(data),1))
+          
           image = mpimg.imread(path_of_data + data[i_rand][0].strip())
           mod_image = change_brightness(image)
+          
+          do_affin = 1
+
+          if do_affin == 1:
+            # Don't apply horizontal shrinking for images with no steering
+            if abs(float(data[i_rand][1])) > 0.1: 
+              mod_image, mod_steer = affi_trans_image(mod_image, data[i_rand][1])
+            else:
+              mod_steer = float(data[i_rand][1])
+          else:
+              mod_steer = float(data[i_rand][1])
+
           batch_train[i] = cut_and_resize_image(mod_image)
-          batch_steer[i] = float(data[i_rand][1]) * (1 + np.random.uniform(-0.10,0.10)) # TODO try other value
-          #batch_steer[i] = float(data[i_rand][1])
+          #batch_train[i] = change_to_hsv(mod_image)
+          #batch_steer[i] = mod_steer * (1 + np.random.uniform(-0.10,0.10)) # TODO try other value
+          batch_steer[i] = mod_steer
           # Randomly flip the image vertically -> steer data has to be inverted
           flip_images = random.randint(0,1)
           if flip_images == 1:
@@ -347,7 +524,14 @@ def data_generator_train(drive_data_steer_left, drive_data_straight, drive_data_
 
 
 '''
-OWN
+This function generates batches of validation data
+INPUT:
+        data = data to choose batches of
+        steer = steering data connected with data
+        batch_size = defines how many tuples should be given
+RETURN:
+        batch_valid = yields the batches with images
+        batch_steer = yields the batches with steering data
 '''
 def data_generator_valid(data, steer, batch_size):
     batch_valid = np.zeros((batch_size, new_size_row, new_size_col, new_size_ch), dtype = np.float32)
@@ -356,17 +540,17 @@ def data_generator_valid(data, steer, batch_size):
       for i in range(batch_size):
         i_rand = int(np.random.choice(len(data),1))
         image = mpimg.imread(path_of_data + data[i_rand].strip())
-        batch_valid[i] = cut_and_resize_image(image)
+        mod_image = cut_and_resize_image(image)
+        #batch_valid[i] = change_to_hsv(mod_image)
         batch_steer[i] = steer[i_rand]
       yield batch_valid, batch_steer
 
 
 
 '''
-  This function defines the architecture of the artificial neuronal network
+  TODO OLD get rid
 '''
 def model_nvidia_gada_2():  
-  # TODO: Check if model is okay -> Paper!!!
   input_shape = (new_size_row, new_size_col, new_size_ch)
 
   model = Sequential()
@@ -415,8 +599,10 @@ def model_nvidia_gada_2():
   model.add(Dense(1, W_regularizer = l2(0.001)))
   return model
 
-def model_nvidia_gada_3():  
-  # TODO: Check if model is okay -> Paper!!!
+'''
+  This function defines the architecture of the artificial neuronal network
+'''
+def model_nvidia_gada():  
   input_shape = (new_size_row, new_size_col, new_size_ch)
 
   model = Sequential()
@@ -540,7 +726,7 @@ def main():
 
   if do_training == 1:
     # model = model_nvidia_gada_2()
-    model = model_nvidia_gada_3()
+    model = model_nvidia_gada()
     print(model.summary())
     print()
 
