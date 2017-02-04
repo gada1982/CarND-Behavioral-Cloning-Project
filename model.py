@@ -27,15 +27,12 @@ from keras.regularizers import l2
 import json
 
 # Define global variable
-# TODO: Check if it possible to get rid of the global variables, because of bad programming style
 new_size_row = 64
 new_size_col = 64
 new_size_ch = 3
 number_of_epochs = 20
 batch_size = 128
-
 path_of_data = './data_udacity/'
-
 
 '''
 This function loads the driving data out of a *.csv-file
@@ -166,17 +163,27 @@ def print_info_data_set(data, type):
   # Print class information
   print('Class distribution: ', class_info)
 
-# TODO
+
+'''
+This function prepares the dataset to get more data for stronger steering angles
+Normally the car is driving straight and with soft steering during within the training data
+So the data has to be manipulated to get a better learing rate for stronger curves
+INPUT:
+        steer = steering angle form one single image
+RETURN:
+        fact = number how often this single images should be included into the training data,
+                the sharper the steering, the more ofter gets the image included
+'''
 def get_fact(steer):
   value = float(steer)
   if value < -0.9:
-    fact = 20
+    fact = 40
   elif value < -0.7:
-    fact = 15
+    fact = 25
   elif value < -0.5:
     fact = 8
   elif value < -0.3:
-    fact = 3
+    fact = 4
   elif value < -0.1:
     fact = 1
   elif value <= 0.1:
@@ -184,15 +191,16 @@ def get_fact(steer):
   elif value <= 0.3:
     fact = 1
   elif value <= 0.5:
-    fact = 3
+    fact = 4
   elif value <= 0.7:
     fact = 8
   elif value <= 0.9:
-    fact = 15
+    fact = 25
   else:
-    fact = 20
+    fact = 40
 
   return fact
+
 
 '''
 This function splits up the driving data in lists for steering left, not steering (straight) and steering right.
@@ -219,12 +227,14 @@ def split_data_left_straight_right(img_list_center, steering_list_center, img_li
   drive_data_straight_app = [[0 for x in range(w)] for y in range(1)]
   drive_data_steer_right_app = [[0 for x in range(w)] for y in range(1)]
   
-  # Necessary because of a lack in programming -> Try to get rid of it
   found_left = 0
   found_straight = 0
   found_right = 0
   
-  split_left = -0.15 #TODO try different value
+  # Steering left = less then -0.15 steering
+  # Nearly no Steering (straigt) = between -0.15 and +0.15
+  # Steering right = more then 0.15 steering
+  split_left = -0.15
   split_right = -1 * split_left
 
   for i in range(0, len(img_list_center)):
@@ -302,7 +312,7 @@ def split_data_left_straight_right(img_list_center, steering_list_center, img_li
   # len(img_list_left) == len(img_list_right)
   # Only len(img_list_center) is smaller, because of split for validation
   for i in range(0, len(img_list_left)):
-    #steering_offset = random.uniform(0.10,0.20)
+    # Steering offset when left/right camera are used
     steering_offset = 0.25
     
     # Include left camera images
@@ -379,6 +389,7 @@ def split_data_left_straight_right(img_list_center, steering_list_center, img_li
       
   return drive_data_steer_left, drive_data_straight, drive_data_steer_right
 
+
 '''
 This function changes the brightness of an image randomly.
 INPUT:
@@ -390,12 +401,12 @@ def change_brightness(image):
     # Convert from RGB to HSV to change brightness
     image_hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
     #Generate new random brightness
-    #TODO test random_brightness = random.uniform(0.25,1.25)
     random_brightness = random.uniform(0.25,1.25)
     image_hsv[:,:,2] = image_hsv[:,:,2] * random_brightness
     #Convert back to RGB colorspace
     final_image = cv2.cvtColor(image_hsv, cv2.COLOR_HSV2RGB)
     return final_image 
+
 
 '''
 This function changes the color space from an image (RGB to HSV)
@@ -408,6 +419,7 @@ def change_to_hsv(image):
     # Convert from RGB to HSV to change brightness
     image_hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
     return image_hsv 
+
 
 '''
 This function flips an image vertically and adjusts it steering angle (inverse)
@@ -433,13 +445,13 @@ RETURN:
         image_trans = image, which has been transformed
         steer_trans = adjusted steering data 
 '''
-def affi_trans_image(image,steer):
-  
+def affi_trans_image(image,steer): 
+  # Get the shape of the image
   row, col, ch = image.shape
   
   # Apply horizontal translation with steering compensation
-  trans_hor = 50 * np.random.uniform() - 25
-  steer_trans = float(steer) + trans_hor / 125
+  trans_hor = 60 * np.random.uniform() - 30
+  steer_trans = float(steer) + trans_hor / 150
   
   # Set up transformation matrix and apply
   trans_matrix = np.float32([[1,0,trans_hor],[0,1,0]])
@@ -456,6 +468,7 @@ RETURN:
         image_resized = image, which has been cut and resized
 '''
 def cut_and_resize_image(image):
+  # Original image size: 160 x 320
   # Cut image on top (20px) to cut the sky and bottom (20px) to cut the hood of the car
   # Cut image on (40px) left and right
   image_cut = image[20:140,40:280]
@@ -476,6 +489,7 @@ RETURN:
         batch_steer = yields the batches with steering data
 '''
 def data_generator_train(drive_data_steer_left, drive_data_straight, drive_data_steer_right, batch_size):
+    use_hsv = 0
     batch_train = np.zeros((batch_size, new_size_row, new_size_col, new_size_ch), dtype = np.float32)
     batch_steer = np.zeros((batch_size,), dtype = np.float32)
     while 1:
@@ -499,22 +513,24 @@ def data_generator_train(drive_data_steer_left, drive_data_straight, drive_data_
           
           image = mpimg.imread(path_of_data + data[i_rand][0].strip())
           mod_image = change_brightness(image)
-          
-          do_affin = 1
-
-          if do_affin == 1:
-            # Don't apply horizontal shrinking for images with no steering
-            if abs(float(data[i_rand][1])) > 0.1: 
-              mod_image, mod_steer = affi_trans_image(mod_image, data[i_rand][1])
-            else:
-              mod_steer = float(data[i_rand][1])
+                    
+          # Don't apply horizontal shrinking for images with no steering
+          if abs(float(data[i_rand][1])) > 0.1: 
+            mod_image, mod_steer = affi_trans_image(mod_image, data[i_rand][1])
           else:
-              mod_steer = float(data[i_rand][1])
+            mod_steer = float(data[i_rand][1])
+          
+          mod_image = cut_and_resize_image(mod_image)
+          
+          if use_hsv == 1:
+            # Use HSV color space
+            batch_train[i] = change_to_hsv(mod_image)
+          else:
+            # Use RGB color space
+            batch_train[i] = mod_image
 
-          batch_train[i] = cut_and_resize_image(mod_image)
-          #batch_train[i] = change_to_hsv(mod_image)
-          #batch_steer[i] = mod_steer * (1 + np.random.uniform(-0.10,0.10)) # TODO try other value
           batch_steer[i] = mod_steer
+
           # Randomly flip the image vertically -> steer data has to be inverted
           flip_images = random.randint(0,1)
           if flip_images == 1:
@@ -534,6 +550,7 @@ RETURN:
         batch_steer = yields the batches with steering data
 '''
 def data_generator_valid(data, steer, batch_size):
+    use_hsv = 0
     batch_valid = np.zeros((batch_size, new_size_row, new_size_col, new_size_ch), dtype = np.float32)
     batch_steer = np.zeros((batch_size,), dtype = np.float32)
     while 1:
@@ -541,63 +558,17 @@ def data_generator_valid(data, steer, batch_size):
         i_rand = int(np.random.choice(len(data),1))
         image = mpimg.imread(path_of_data + data[i_rand].strip())
         mod_image = cut_and_resize_image(image)
-        #batch_valid[i] = change_to_hsv(mod_image)
+        
+        if use_hsv == 1:
+          # Use HSV color space
+          batch_valid[i] = change_to_hsv(mod_image)
+        else:
+          # Use RGB color space
+          batch_valid[i] = mod_image
+
         batch_steer[i] = steer[i_rand]
       yield batch_valid, batch_steer
 
-
-
-'''
-  TODO OLD get rid
-'''
-def model_nvidia_gada_2():  
-  input_shape = (new_size_row, new_size_col, new_size_ch)
-
-  model = Sequential()
-  
-  # Layer 1: Normalization of the input in range -1 to 1
-  model.add(Lambda(lambda x: x/127.5 - 1.0, input_shape = input_shape))
-  
-  # Layer 2: Convolution Layer with relu-activation and l2-weights-regularization
-  model.add(Convolution2D(24, 5, 5, border_mode = 'valid', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
-  
-  # Layer 3: Convolution Layer with relu-activation and l2-weights-regularization
-  model.add(Convolution2D(36, 5, 5, border_mode = 'valid', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
-  
-  # Layer 4: Convolution Layer with relu-activation and l2-weights-regularization
-  model.add(Convolution2D(48, 5, 5, border_mode = 'valid', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
-  
-  # Layer 5: Convolution Layer with relu-activation and l2-weights-regularization
-  model.add(Convolution2D(64, 3, 3, border_mode = 'same', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
-  
-  # Layer 6: Convolution Layer with relu-activation and l2-weights-regularization
-  model.add(Convolution2D(64, 3, 3, border_mode = 'valid', subsample = (2,2), activation = 'relu', W_regularizer = l2(0.001)))
-  
-  # Layer 7: Flatten for the following fully connceted layers
-  model.add(Flatten())
-  
-  # Layer 8: Fully connected layer with size 80 and l2-weights-regularization
-  #           Dropout (0.5) to prevent overfitting
-  model.add(Dense(80, W_regularizer = l2(0.001)))
-  model.add(Dropout(0.5))
-  
-  # Layer 9: Fully connected layer with size 40 and l2-weights-regularization
-  #           Dropout (0.5) to prevent overfitting
-  model.add(Dense(40, W_regularizer = l2(0.001)))
-  model.add(Dropout(0.5))
-  
-  # Layer 10: Fully connected layer with size 16 and l2-weights-regularization
-  #           Dropout (0.5) to prevent overfitting
-  model.add(Dense(16, W_regularizer = l2(0.001)))
-  model.add(Dropout(0.5))
-  
-  # Layer 11: Fully connected layer with size 10 and l2-weights-regularization
-  #           Dropout (0.5) to prevent overfitting
-  model.add(Dense(10, W_regularizer = l2(0.001)))
-  
-  # Layer 12: Fully connected layer with size 1 (Output-Layer) and l2-weights-regularization
-  model.add(Dense(1, W_regularizer = l2(0.001)))
-  return model
 
 '''
   This function defines the architecture of the artificial neuronal network
@@ -677,10 +648,6 @@ def train_model(model, drive_data_steer_left, drive_data_straight, drive_data_st
 
   save_trained_model(file_name_model, file_name_weights, model)
 
-  valid_loss = model_data.history['val_loss'][0]
-
-  print(valid_loss)
-
 
 '''
   This function saves the entire model of the artificial neuronal network
@@ -705,6 +672,7 @@ def save_trained_model(path_model, path_weights, model):
 
     print('Model architecture and weights saved!')
 
+
 '''
   Main function
 '''
@@ -719,13 +687,17 @@ def main():
   if print_debug == 1:
     print_info_data_set(drive_data, 0)
   
+  # Separate images of left, center and right camera
   center_img, left_img, right_img, steer_angle_center, steer_angle_l_r = split_data_info(drive_data)
+  
+  # Split up training data and validation data
   center_img, X_valid, steer_angle_center, y_valid = split_train_valid(center_img, steer_angle_center)
 
+  # Split data with steering left, nearly no steering (straight) and steering right
   drive_data_steer_left, drive_data_straight, drive_data_steer_right = split_data_left_straight_right(center_img, steer_angle_center, left_img, right_img, steer_angle_l_r)
 
   if do_training == 1:
-    # model = model_nvidia_gada_2()
+    # Load the model
     model = model_nvidia_gada()
     print(model.summary())
     print()
@@ -734,7 +706,7 @@ def main():
     train_model(model, drive_data_steer_left, drive_data_straight, drive_data_steer_right, X_valid, y_valid)
 
   print()
-  print('Everything done!!!')
+  print('Everything done!')
 
 if __name__ == "__main__":
     main()
