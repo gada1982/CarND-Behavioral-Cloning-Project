@@ -1,5 +1,5 @@
 # Introduction
-This project is done as a part of the Nanodegree - *Self-Driving Car Engineer* provided from Udacity. The outcome of the projct is, that a system with an artificial neuronal network is able to learn driving a track successfully by only getting human driving behaviour as input. And not only the track it has observed, it has to gerneralize to other tracks too. Images from cameras at the front (left/center/right) and steering angles are taken as input values. Collection of training data and testing is done within a simulator, which is provided by Udacity.
+This project is done as a part of the Nanodegree - *Self-Driving Car Engineer* provided from Udacity. The outcome of the projct is, that a system with an artificial neuronal network is able to learn driving a track successfully by only getting human driving behaviour as input. It has to be able to gerneralize to other tracks too. Images from cameras at the front (left/center/right) and steering angles are taken as input values. Collection of training data and testing is done within a simulator, which is provided by Udacity.
 
 # Outline
 1. Requirements
