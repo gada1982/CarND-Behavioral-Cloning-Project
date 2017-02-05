@@ -55,7 +55,7 @@ This data is not distributed very evenly over the possible steering angles (-1 t
 Finally it wasn't necessary to use own collected data to train the model. The sample data with lots of data processing did the job.
 
 # 4. Data Processing
-The input data (sample data or own collected data) is shuffled and split up in training data and validation data. 10% of the data is used for validation. The validation data is **never** used for training. No own testing data is split up, because during development I found out that only testing in the simulator can give a reliable feedback if the final model works in a proper way.
+The input data (sample data or own collected data) is shuffled and split up in training data and validation data. 10% of the data from the center camera is used for validation. While testing in the simulator only the images of thecenter camera are used. Because of this only the images of this camera is used for validation. The validation data (804 images) is **never** used for training. No own testing data is split up, because during development I found out that **only** testing in the simulator can give a reliable feedback if the final model works in a proper way.
 
 ### Data Preprocessing
 Because the uneven distribution within the training data and to make the model able to generalize to other conditions and tracks, the following steps have been done while preprocessing:
@@ -172,6 +172,7 @@ The model for the artificial neuronal network is trained with [Keras](https://ke
 The metrics for measurement of the training progress Mean Squared Error (mse) has been used.
 
 The model was trained for 20 epochs with 38520 samples per epoch.
+
 The final loss (mse) was: TODO
 
 # 6. Model Testing
