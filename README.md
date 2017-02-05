@@ -173,7 +173,7 @@ The metrics for measurement of the training progress Mean Squared Error (mse) ha
 
 The model was trained for 20 epochs with 38520 samples per epoch.
 
-The final loss (mse) was: TODO
+The final loss (mse) was: 0.035
 
 # 6. Model Testing
 For testing track 1 (within the simulator) has been used. This was successful, because the car was able to pass the track in a smooth way, without hitting any track limits.
