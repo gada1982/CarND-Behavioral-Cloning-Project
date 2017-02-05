@@ -49,7 +49,8 @@ While collecting good training data is rather difficult, especially when using k
 
 This data is not distributed very evenly over the possible steering angles (-1 to 1). Most of the data was for straight driving. When training artificial neuronal networks a balanced dataset is really important. If not, the final model gets biased to this uneven distribution.
 
-TODO Bild einfügen
+**Original dataset (from Udacity) only images from track 1:**
+![unprocessed data](https://github.com/gada1982/CarND-Behavioral-Cloning-Project/blob/master/info_for_readme/info%20data%20not%20processed.png)
 
 Finally it wasn't necessary to use own collected data to train the model. The sample data with lots of data processing did the job.
 
@@ -57,6 +58,11 @@ Finally it wasn't necessary to use own collected data to train the model. The sa
 The input data (sample data or own collected data) is shuffled and split up in training data and validation data. TODO 15% of the data is used for validation. The validation data is **never** used for training. No own testing data is split up, because during development I found out that only testing in the simulator can give a reliable feedback if the final model works in a proper way.
 
 Because the uneven distribution within the training data and to make the model able to generalize to other conditions and traks, the following steps have been done:
+
+
+**Processed dataset - only images from track 1:**
+![processed data](https://github.com/gada1982/CarND-Behavioral-Cloning-Project/blob/master/info_for_readme/info%20data%20processed.png)
+
 - Usage of images from left camera and right camera
   - Steering angle correction of +/- 0.25 TODO
   - This amount was found out experimentally, in a real world example this can be calculated out of the geometry
