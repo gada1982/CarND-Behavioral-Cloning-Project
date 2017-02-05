@@ -1,7 +1,7 @@
 # Project for Self-Driving Car Engineer provided from Udacity
 # Model for cloning human driving behaviour
 # Author: gada1982
-# Mail: daniel@gattringer.biz
+# Mail: daniel@gattringer.biz 
 
 # General imports
 import os
