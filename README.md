@@ -31,18 +31,18 @@ This project is done as a part of the Nanodegree - *Self-Driving Car Engineer* p
 # 3. Data Collection
 
 ### 3.1 Using the Simulator
-The simulator can be used for data collection. The **Training Mode** is used for human driving and collecting and storing data. The **Autonomous Mode** is used for testing the trained model. Both modes are available for both tracks. Track 1 is rather flat with soft curves. Track 2 is in the mountains, steeper and with more sharp turns.
+The simulator can be used for data collection and testing the model. The **Training Mode** is used for human driving and collecting and storing data. The **Autonomous Mode** is used for testing the trained model. Both modes are available for both tracks. Track 1 is rather flat with soft curves. Track 2 is in the mountains, steeper and with more sharp turns.
 
 ![Simulator](https://github.com/gada1982/CarND-Behavioral-Cloning-Project/blob/master/info_for_readme/simulator.png)
 
-The simulator delivers and stores images of  left / center / right camera mounted at the front-window of the car. In the dataset (.csv) the following data is stored. 
+The simulator delivers and stores images of  left / center / right camera mounted behind the front-window of the car. In the dataset (.csv) the following data is stored. 
 * Links to stored images of the three cameras
 * Steering-data
 * Throttle-data
 * Brake-data
 * Speed-data
 
-At the moment only images and steering-data are for training the model.
+At the moment only images and steering-data are used for training the model.
 
 ### 3.1 Using Data from Udacity
 While collecting good training data is rather difficult, especially when using keyboard input to steer the car, Udacity provided a basis dataset (see chapter Requirements).
@@ -55,19 +55,19 @@ This data is not distributed very evenly over the possible steering angles (-1 t
 Finally it wasn't necessary to use own collected data to train the model. The sample data with lots of data processing did the job.
 
 # 4. Data Processing
-The input data (sample data or own collected data) is shuffled and split up in training data and validation data. 10% of the data from the center camera is used for validation. While testing in the simulator only the images of thecenter camera are used. Because of this only the images of this camera is used for validation. The validation data (804 images) is **never** used for training. No own testing data is split up, because during development I found out that **only** testing in the simulator can give a reliable feedback if the final model works in a proper way.
+The input data (sample data or own collected data) is shuffled and split up in training data and validation data. 10% of the data from the center camera is used for validation. While testing with the simulator only the images of the center camera are used. Because of this, only the images of this camera are used for validation. The validation data (804 images) is **never** used for training. No own testing data is split up, because during development I found out that **only** testing in the simulator can give a reliable feedback if the final model works properly.
 
 ### Data Preprocessing
-Because the uneven distribution within the training data and to make the model able to generalize to other conditions and tracks, the following steps have been done while preprocessing:
-- Images from left / center / right camera has been used:
+Because of the uneven distribution within the training data and to make the model able to generalize to other conditions and tracks, the following steps have been done while preprocessing:
+- Images from left / center / right camera have been used:
   - This data is mostly used for recovery (back to the middle of the road)
   - Steering angle correction of +/- 0.25  
 - Add data for stronger curves:
-  - Most of the steering data in sample data is straight or for light turns. With this data the artificial neuronal network would be training to go straigt or take light curves. When a single image is putten to the training data, the steering angle is checked and the sharper the turn is, the more often the same images is included to the training data. 
-- Split the data into steering left / nearly no steearing (straight) and steering right:
-  - Steer left: (x < -0.15)
+  - Most of the steering data in the sample data is straight or for light turns. With this data the artificial neuronal network would be training to go straigt or take light curves. When a single image is putten to the training data, the steering angle is checked and the sharper the turn is, the more often the same image is included to the training data. 
+- Split the data into steering left / nearly no steearing (straight) / steering right:
+  - Steering left: (x < -0.15)
   - No steering - straight: (-0.15 <= x <= 0.15)
-  - Steer right: (x < 0.15)
+  - Steering right: (x < 0.15)
   - During data generation it is randomly choosen data of which group is taken
 
 **Processed dataset - only images from track 1:**
@@ -80,7 +80,7 @@ Because the uneven distribution within the training data and to make the model a
 - Number of images with steering right: 15931
 
 ### Data Generation
-To get training and validation data fit_generator is used. Additionally random data augmentation is included into the data-generators. The following steps have been done while data generation:
+To get training and validation data *fit_generator* is used. Additionally random data augmentation is included into the data-generators. The following steps have been done while data generation:
 - Flip images randomly (vertical axis) - to have the same number of data for left and right turns:
   - Inverse steering angle
 - Randomly adjustment of brightness:
@@ -93,7 +93,7 @@ To get training and validation data fit_generator is used. Additionally random d
   - from 160x320 to 64x64
 - Choose randomly between the groups (steer left / straight / steer right)
 
-The model should only learn "reading" the track and shouldn't be influence by the hood of the car or the sky. Because of this, the images (160x320) are cut 20px on top and bottom, and 40px on the left and right side. This gives an image size of 120x240.
+The model should only learn "reading" the track and shouldn't be influenced by the hood of the car or the sky. Because of this, the images (160x320) are cut 20px on top and bottom, and 40px on the left and right side. This gives an image size of 120x240.
 This cut images get shrinked to 64x64 without big disadvantages. 
 
 Testing data (in the simulator) has to be adjusted to the same size (64x64). This preprocessing has been included into drive.py.
@@ -167,7 +167,7 @@ Normalisation of images doesn't change the content of the images, but it makes i
 
 For this model / project an Adam optimizer seems to be the best solution. To avoid jumping around a rather small learning rate (0.0001) has been used.
 
-The model for the artificial neuronal network is trained with [Keras](https://keras.io/) and a Tensorflow backend. In this project lots of data is needed. Because of this, it is not useful to keep the hole data in memory.
+The model for the artificial neuronal network is trained with [Keras](https://keras.io/) and a Tensorflow backend. In this project lots of data is needed. Because of this, it is not useful to keep the hole data in memory. As mentioned above *fit_generator* was used instead.
 
 The metrics for measurement of the training progress Mean Squared Error (mse) has been used.
 
@@ -185,6 +185,6 @@ To show that the model generalizes to different tracks or conditions the second 
 TODO: Add track 2 video
 
 # 7. Conclusion
-The model, which was an adaption of the NVDIA-model, could clone the human driving behaviour and was able to generalize to a track it has never seen while training quite well. At the moment the model only can control the steering angle of the car. Trottle and brake data could be used for further work.
+The model, which was an adaption of the NVDIA-model, could clone the human driving behaviour and was able to generalize to a track it has never seen while training quite well. At the moment the model can only control the steering angle of the car. Trottle and brake data could be used for further work.
 
 While training an artificial neuronal network **Garbage in - Garbage out** really matters. Understanding the data and getting a balanced dataset are the key figures.
