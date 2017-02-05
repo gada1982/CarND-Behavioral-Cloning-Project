@@ -22,11 +22,11 @@ This project is done as a part of the Nanodegree - *Self-Driving Car Engineer* p
   - if you don't want to collect own training data with the simulator
 
 # 2. Files
-- model.py - The script used to create and train the model.
-- drive.py - The script to drive the car. 
-- model.json - The model architecture.
-- model.h5 - The model weights.
-- README.md - explains the structure of your network and training approach. 
+- model.py - The script used to create and train the model
+- drive.py - The script to drive the car for testing 
+- model.json - The model architecture
+- model.h5 - The model weights
+- README.md - Explains the structure of the software and the approach to solve the problem 
 
 # 3. Data Collection
 
