@@ -65,13 +65,19 @@ Because the uneven distribution within the training data and to make the model a
 - Add data for stronger curves:
   - Most of the steering data in sample data is straight or for light turns. With this data the artificial neuronal network would be training to go straigt or take light curves. When a single image is putten to the training data, the steering angle is checked and the sharper the turn is, the more often the same images is included to the training data. 
 - Split the data into steering left / nearly no steearing (straight) and steering right:
-  - Steer left (x < -0.15)
-  - No steering (-0.15 <= x <= 0.15)
-  - Steer right (x < 0.15)
+  - Steer left: (x < -0.15)
+  - No steering - straight: (-0.15 <= x <= 0.15)
+  - Steer right: (x < 0.15)
   - During data generation it is randomly choosen data of which group is taken
 
 **Processed dataset - only images from track 1:**
 ![processed data](https://github.com/gada1982/CarND-Behavioral-Cloning-Project/blob/master/info_for_readme/info%20data%20processed.png)
+
+**Final dataset:**
+- Total number of images: 38520
+- Number of images with steering left: 14736
+- Number of images with nearly no steering: 7853
+- Number of images with steering right: 15931
 
 ### Data Generation
 To get training and validation data fit_generator is used. Additionally random data augmentation is included into the data-generators. The following steps have been done while data generation:
@@ -161,20 +167,23 @@ Normalisation of images doesn't change the content of the images, but it makes i
 
 For this model / project an Adam optimizer seems to be the best solution. To avoid jumping around a rather small learning rate (0.0001) has been used.
 
-The model for the artificial neuronal network is trained with [Keras](https://keras.io/) and a Tensorflow backend. In this project lots of data is needed. Because of this, it is not useful to keep the hole data in memory. 
+The model for the artificial neuronal network is trained with [Keras](https://keras.io/) and a Tensorflow backend. In this project lots of data is needed. Because of this, it is not useful to keep the hole data in memory.
 
-The model was trained for 20 epochs with 24x TODO samples per epoch.
+The metrics for measurement of the training progress Mean Squared Error (mse) has been used.
+
+The model was trained for 20 epochs with 38520 samples per epoch.
+The final loss (mse) was: TODO
 
 # 6. Model Testing
 For testing track 1 (within the simulator) has been used. This was successful, because the car was able to pass the track in a smooth way, without hitting any track limits.
 
-TODO: Add track video
+TODO: Add track 1 video
 
-To show that the model generalizes to different tracks or conditions the second track (within the simulator) has been used. The model has **never** been trained on track 2. Anyway the car passes the track sucessfully.
+To show that the model generalizes to different tracks or conditions the second track (within the simulator) has been used. The model has **never** been trained on track 2. Anyway the car passes a significant part of the track sucessfully. But it is not able to pass a really sharp right turn on the track. This will be part of future work, because it was not recommended to pass this track for finalizing the project.
 
-TODO: Really? Add track video
+TODO: Add track 2 video
 
 # 7. Conclusion
-The model, which was an adaption of the NVDIA-model, could clone the human driving behaviour and was able to generalize to tracks it has never seen while training. At the moment the model only can control the steering angle of the car. Trottle and brake, data could be used for further work.
+The model, which was an adaption of the NVDIA-model, could clone the human driving behaviour and was able to generalize to a track it has never seen while training quite well. At the moment the model only can control the steering angle of the car. Trottle and brake data could be used for further work.
 
-While training an artificial neuronal network *Garbage in - Garbage out* really matters. Understanding the data and getting the balanced dataset are the key figures.
+While training an artificial neuronal network **Garbage in - Garbage out** really matters. Understanding the data and getting a balanced dataset are the key figures.
