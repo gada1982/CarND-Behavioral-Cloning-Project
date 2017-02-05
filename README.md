@@ -178,11 +178,11 @@ The final loss (mse) was: 0.035
 # 6. Model Testing
 For testing track 1 (within the simulator) has been used. This was successful, because the car was able to pass the track in a smooth way, without hitting any track limits.
 
-![Youtube - Track 1](https://youtu.be/rETuxAycmF0)
+[Video - Track 1](https://youtu.be/rETuxAycmF0)
 
 To show that the model generalizes to different tracks or conditions the second track (within the simulator) has been used. The model has **never** been trained on track 2. Anyway the car passes a significant part of the track sucessfully. But it is not able to pass a really sharp right turn on the track. This will be part of future work, because it was not recommended to pass this track for finalizing the project.
 
-![Youtube - Track 2](https://youtu.be/wno412WE0h0)
+[Video - Track 2](https://youtu.be/wno412WE0h0)
 
 # 7. Conclusion
 The model, which was an adaption of the NVDIA-model, could clone the human driving behaviour and was able to generalize to a track it has never seen while training quite well. At the moment the model can only control the steering angle of the car. Trottle and brake data could be used for further work.
