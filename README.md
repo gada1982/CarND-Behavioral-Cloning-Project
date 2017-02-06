@@ -94,7 +94,7 @@ To get training and validation data *fit_generator* is used. Additionally random
 - Apply affine transformations:
   - Squeeze the images in the horizontal direction (with a randomly choosen amount)
   - This generates sharper turns
-  - Adjust the steering angles. The more the images gets squeezed the more the steering data has to be adjusted
+  - Adjust the steering angles. More squeezing, more steering data adjustment
 ![Image with affine transformation](https://github.com/gada1982/CarND-Behavioral-Cloning-Project/blob/master/info_for_readme/Squeezed%20image.png)
 - Cut and resize the images:
   - from 160x320 to 64x64
