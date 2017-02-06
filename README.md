@@ -86,14 +86,19 @@ Because of the uneven distribution within the training data and to make the mode
 To get training and validation data *fit_generator* is used. Additionally random data augmentation is included into the data-generators. The following steps have been done while data generation:
 - Flip images randomly (vertical axis) - to have the same number of data for left and right turns:
   - Inverse steering angle
+  - When flipping a left turn gets a right turn and the other way around
+![Flipped images](https://github.com/gada1982/CarND-Behavioral-Cloning-Project/blob/master/info_for_readme/Flipped_image.png)
 - Randomly adjustment of brightness:
-  - To avoid the model from getting biasd to lighter or darker conditions
+  - To avoid the model from getting biasd to lighter or darker conditions, to make it able to operate properly at lighter and darker conditions
+![Image with adjusted brightness](https://github.com/gada1982/CarND-Behavioral-Cloning-Project/blob/master/info_for_readme/Brightness_image.png)
 - Apply affine transformations:
   - Squeeze the images in the horizontal direction (with a randomly choosen amount)
   - This generates sharper turns
-  - Adjust the steering angles
+  - Adjust the steering angles. The more the images gets squeezed the more the steering data has to be adjusted
+![Image with affine transformation](https://github.com/gada1982/CarND-Behavioral-Cloning-Project/blob/master/info_for_readme/Squeezed%20image.png)
 - Cut and resize the images:
   - from 160x320 to 64x64
+![Cut and resized image](https://github.com/gada1982/CarND-Behavioral-Cloning-Project/blob/master/info_for_readme/cut%20and%20resize.png)
 - Choose randomly between the groups (steer left / straight / steer right)
 
 The model should only learn "reading" the track and shouldn't be influenced by the hood of the car or the sky. Because of this, the images (160x320) are cut 20px on top and bottom, and 40px on the left and right side. This gives an image size of 120x240.
