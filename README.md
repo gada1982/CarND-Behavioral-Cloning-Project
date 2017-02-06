@@ -183,7 +183,7 @@ The metrics for measurement of the training progress *Mean Squared Error (mse)* 
 > python model.py
 
 
-The model was trained for 20 epochs with 38520 samples per epoch.
+The model was trained for 20 epochs with 38520 samples per epoch with batch-size 128.
 
 The final loss (mse) was: 0.035
 
