@@ -61,7 +61,10 @@ The input data (sample data or own collected data) is shuffled and split up in t
 Because of the uneven distribution within the training data and to make the model able to generalize to other conditions and tracks, the following steps have been done while preprocessing:
 - Images from left / center / right camera have been used:
   - This data is mostly used for recovery (back to the middle of the road)
-  - Steering angle correction of +/- 0.25  
+  - Steering angle correction of +/- 0.25
+  - When taken an image from the left camera and interpreted as one from the center camera the car seem to be to far on the right side of the road -> steer a little bit to the left.
+  - When taken an image from the right camera and interpreted as one from the center camera the car seem to be to far on the left side of the road -> steer a little bit to the right.
+![Images from left / center / right camera](https://github.com/gada1982/CarND-Behavioral-Cloning-Project/blob/master/info_for_readme/3%20cameras.png) 
 - Add data for stronger curves:
   - Most of the steering data in the sample data is straight or for light turns. With this data the artificial neuronal network would be training to go straight or take light curves. When a single image is putten to the training data, the steering angle is checked and the sharper the turn is, the more often the same image is included to the training data. 
 - Split the data into steering left / nearly no steearing (straight) / steering right:
